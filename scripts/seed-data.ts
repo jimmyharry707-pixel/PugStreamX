@@ -1,21 +1,8 @@
-export type Category = {
-  slug: string;
-  name: string;
-  emoji: string;
-  gradient: string;
-};
+import type { Category, Stream } from "../src/lib/types";
 
-export type Stream = {
-  id: string;
-  title: string;
-  streamer: string;
-  category: string;
-  viewers: number;
-  live: boolean;
-  tags: string[];
-  gradient: string;
-};
-
+// Initial data loaded by `npm run db:seed`.
+// The `gradient` values are Tailwind classes. Tailwind scans this file to generate them,
+// so any new gradient stored in the database must also appear somewhere in the source.
 export const categories: Category[] = [
   { slug: "gaming", name: "Gaming", emoji: "🎮", gradient: "from-violet-600 to-fuchsia-500" },
   { slug: "just-chatting", name: "Just Chatting", emoji: "💬", gradient: "from-sky-500 to-cyan-400" },
@@ -39,15 +26,3 @@ export const streams: Stream[] = [
   { id: "cozy-farm", title: "Cozy farm sim — building the pug barn", streamer: "Pumpkin Plays", category: "gaming", viewers: 615, live: true, tags: ["Cozy", "Sim"], gradient: "from-indigo-600 to-violet-400" },
   { id: "rust-from-scratch", title: "Writing a game engine in Rust", streamer: "Ferris&Pug", category: "coding", viewers: 498, live: true, tags: ["Rust", "Gamedev"], gradient: "from-sky-700 to-indigo-400" },
 ];
-
-export function getStream(id: string) {
-  return streams.find((s) => s.id === id);
-}
-
-export function getCategory(slug: string) {
-  return categories.find((c) => c.slug === slug);
-}
-
-export function formatViewers(n: number) {
-  return n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K` : String(n);
-}

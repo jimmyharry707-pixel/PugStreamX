@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { formatViewers, getCategory, type Stream } from "@/lib/streams";
+import { formatViewers } from "@/lib/format";
+import type { Category, Stream } from "@/lib/types";
 
-export default function StreamCard({ stream }: { stream: Stream }) {
-  const category = getCategory(stream.category);
-
+export default function StreamCard({ stream, category }: { stream: Stream; category?: Category }) {
   return (
     <Link href={`/watch/${stream.id}`} className="group block">
       <div

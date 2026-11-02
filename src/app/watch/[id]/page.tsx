@@ -3,25 +3,32 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Chat from "@/components/Chat";
 import StreamCard from "@/components/StreamCard";
-import { formatViewers, getCategory, getStream, streams } from "@/lib/streams";
+import { getCategory, getStream, getStreamIds, getStreams } from "@/lib/data";
+import { formatViewers } from "@/lib/format";
 
-export function generateStaticParams() {
-  return streams.map((s) => ({ id: s.id }));
+export async function generateStaticParams() {
+  const ids = await getStreamIds();
+  // Cache Components requires at least one param, so an empty database would otherwise fail
+  // the build. The placeholder just prerenders the not-found page.
+  return ids.length > 0 ? ids.map((id) => ({ id })) : [{ id: "placeholder" }];
 }
 
 export async function generateMetadata({ params }: PageProps<"/watch/[id]">): Promise<Metadata> {
   const { id } = await params;
-  const stream = getStream(id);
+  const stream = await getStream(id);
   return { title: stream ? `${stream.streamer} — ${stream.title}` : "Stream not found" };
 }
 
 export default async function WatchPage({ params }: PageProps<"/watch/[id]">) {
   const { id } = await params;
-  const stream = getStream(id);
+  const stream = await getStream(id);
   if (!stream) notFound();
 
-  const category = getCategory(stream.category);
-  const related = streams.filter((s) => s.category === stream.category && s.id !== stream.id).slice(0, 4);
+  const [category, sameCategory] = await Promise.all([
+    getCategory(stream.category),
+    getStreams({ category: stream.category, limit: 5 }),
+  ]);
+  const related = sameCategory.filter((s) => s.id !== stream.id).slice(0, 4);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
@@ -70,7 +77,7 @@ export default async function WatchPage({ params }: PageProps<"/watch/[id]">) {
           <h2 className="mb-4 text-xl font-bold">More {category?.name} streams</h2>
           <div className="grid gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
             {related.map((s) => (
-              <StreamCard key={s.id} stream={s} />
+              <StreamCard key={s.id} stream={s} category={category ?? undefined} />
             ))}
           </div>
         </section>

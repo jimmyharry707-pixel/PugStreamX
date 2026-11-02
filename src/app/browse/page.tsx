@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import StreamCard from "@/components/StreamCard";
-import { categories, streams } from "@/lib/streams";
+import { getCategories, getStreams } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Browse" };
 
@@ -20,16 +20,13 @@ export default function BrowsePage({ searchParams }: PageProps<"/browse">) {
 async function Results({ searchParams }: Pick<PageProps<"/browse">, "searchParams">) {
   const { category, q } = await searchParams;
   const activeCategory = typeof category === "string" ? category : undefined;
-  const query = typeof q === "string" ? q.trim().toLowerCase() : "";
+  const query = typeof q === "string" ? q.trim() : "";
 
-  const results = streams
-    .filter((s) => !activeCategory || s.category === activeCategory)
-    .filter(
-      (s) =>
-        !query ||
-        [s.title, s.streamer, ...s.tags].some((field) => field.toLowerCase().includes(query)),
-    )
-    .sort((a, b) => b.viewers - a.viewers);
+  const [results, categories] = await Promise.all([
+    getStreams({ category: activeCategory, q: query || undefined }),
+    getCategories(),
+  ]);
+  const categoryBySlug = new Map(categories.map((c) => [c.slug, c]));
 
   const pill = (active: boolean) =>
     `rounded-full px-4 py-1.5 text-sm transition ${
@@ -52,7 +49,7 @@ async function Results({ searchParams }: Pick<PageProps<"/browse">, "searchParam
       {results.length > 0 ? (
         <div className="mt-8 grid gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
           {results.map((stream) => (
-            <StreamCard key={stream.id} stream={stream} />
+            <StreamCard key={stream.id} stream={stream} category={categoryBySlug.get(stream.category)} />
           ))}
         </div>
       ) : (

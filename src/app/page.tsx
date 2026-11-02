@@ -1,9 +1,30 @@
 import Link from "next/link";
 import StreamCard from "@/components/StreamCard";
-import { categories, formatViewers, streams } from "@/lib/streams";
+import { getCategories, getCategoryViewerTotals, getStreams } from "@/lib/data";
+import { formatViewers } from "@/lib/format";
 
-export default function Home() {
-  const [featured, ...rest] = [...streams].sort((a, b) => b.viewers - a.viewers);
+export default async function Home() {
+  const [streams, categories, viewerTotals] = await Promise.all([
+    getStreams({ limit: 9 }),
+    getCategories(),
+    getCategoryViewerTotals(),
+  ]);
+  const categoryBySlug = new Map(categories.map((c) => [c.slug, c]));
+
+  if (streams.length === 0) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-24 text-center">
+        <p className="text-6xl">🐶💤</p>
+        <h1 className="mt-6 text-2xl font-bold">No streams yet</h1>
+        <p className="mt-2 text-zinc-400">
+          The database is empty. Run <code className="rounded bg-zinc-800 px-1.5 py-0.5">npm run db:seed</code> to load
+          sample streams.
+        </p>
+      </div>
+    );
+  }
+
+  const [featured, ...rest] = streams;
 
   return (
     <div className="mx-auto max-w-7xl space-y-14 px-4 py-8">
@@ -46,8 +67,8 @@ export default function Home() {
           <Link href="/browse" className="text-sm text-amber-400 hover:underline">Show all</Link>
         </div>
         <div className="grid gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
-          {rest.slice(0, 8).map((stream) => (
-            <StreamCard key={stream.id} stream={stream} />
+          {rest.map((stream) => (
+            <StreamCard key={stream.id} stream={stream} category={categoryBySlug.get(stream.category)} />
           ))}
         </div>
       </section>
@@ -56,20 +77,17 @@ export default function Home() {
       <section>
         <h2 className="mb-4 text-xl font-bold">Browse categories</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {categories.map((c) => {
-            const viewers = streams.filter((s) => s.category === c.slug).reduce((sum, s) => sum + s.viewers, 0);
-            return (
-              <Link
-                key={c.slug}
-                href={`/browse?category=${c.slug}`}
-                className={`group flex aspect-[3/4] flex-col justify-end rounded-xl bg-gradient-to-br ${c.gradient} p-4 transition hover:-translate-y-1`}
-              >
-                <span className="mb-auto text-4xl transition group-hover:scale-110">{c.emoji}</span>
-                <span className="font-bold">{c.name}</span>
-                <span className="text-xs text-white/80">{formatViewers(viewers)} viewers</span>
-              </Link>
-            );
-          })}
+          {categories.map((c) => (
+            <Link
+              key={c.slug}
+              href={`/browse?category=${c.slug}`}
+              className={`group flex aspect-[3/4] flex-col justify-end rounded-xl bg-gradient-to-br ${c.gradient} p-4 transition hover:-translate-y-1`}
+            >
+              <span className="mb-auto text-4xl transition group-hover:scale-110">{c.emoji}</span>
+              <span className="font-bold">{c.name}</span>
+              <span className="text-xs text-white/80">{formatViewers(viewerTotals[c.slug] ?? 0)} viewers</span>
+            </Link>
+          ))}
         </div>
       </section>
     </div>
