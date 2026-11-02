@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { cache } from "react";
 import { getCollection } from "@/lib/db/client";
 import { findUserById, toPublicUser } from "@/features/users/queries";
@@ -16,6 +17,9 @@ export const getCurrentUser = cache(async (): Promise<PublicUser | null> => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
+  // Session validity depends on the current time, so this must run per request, never in a
+  // prerender. cookies() alone isn't enough: Partial Prefetching prerenders cookie-based content.
+  await connection();
   const sessions = await getCollection<SessionDoc>("sessions");
   const session = await sessions.findOne({ _id: hashToken(token), expiresAt: { $gt: new Date() } });
   if (!session) return null;
