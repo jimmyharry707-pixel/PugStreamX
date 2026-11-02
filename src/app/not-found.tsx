@@ -1,14 +1,14 @@
-import Link from "next/link";
+import { PsLinkButton } from "@/components/ui/ps-button";
+import { PsEmptyState } from "@/components/ui/ps-empty-state";
 
 export default function NotFound() {
   return (
-    <div className="mx-auto max-w-xl px-4 py-24 text-center">
-      <p className="text-7xl">🐶❓</p>
-      <h1 className="mt-6 text-3xl font-bold">This stream wandered off</h1>
-      <p className="mt-2 text-zinc-400">We couldn&apos;t find that page. It&apos;s probably chasing its tail somewhere.</p>
-      <Link href="/" className="mt-8 inline-block rounded-full bg-amber-400 px-6 py-3 font-semibold text-zinc-950 hover:bg-amber-300">
-        Back home
-      </Link>
-    </div>
+    <PsEmptyState
+      emoji="🐶❓"
+      title="This stream wandered off"
+      action={<PsLinkButton href="/" size="lg">Back home</PsLinkButton>}
+    >
+      We couldn&apos;t find that page. It&apos;s probably chasing its tail somewhere.
+    </PsEmptyState>
   );
 }

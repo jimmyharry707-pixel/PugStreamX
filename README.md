@@ -1,51 +1,51 @@
 # PugStreamX
 
-A live-streaming site built with Next.js (App Router, Cache Components) and MongoDB.
+Next.js (App Router, Cache Components) + MongoDB. Project conventions are in [CLAUDE.md](CLAUDE.md).
 
 ## Setup
 
-1. Start MongoDB locally, or create a free cluster on MongoDB Atlas.
-2. Copy `.env.example` to `.env.local` and set `MONGODB_URI` (and optionally `MONGODB_DB`).
-3. Install and seed:
+1. Start MongoDB locally, or create a cluster on MongoDB Atlas.
+2. Copy `.env.example` to `.env.local` and set `MONGODB_URI`.
+3. Run:
 
    ```bash
    npm install
-   npm run db:seed   # loads sample categories/streams and creates indexes; safe to re-run
-   npm run dev       # http://localhost:3000
+   npm run dev   # http://localhost:3000
    ```
 
-`npm run build` reads from the database to prerender pages, so MongoDB must be reachable at build time.
+Collections and indexes are created automatically on first use.
+
+## Pages
+
+| Path      | Who               | What                                   |
+| --------- | ----------------- | -------------------------------------- |
+| `/signup` | signed-out users  | create an account (email + password)   |
+| `/signin` | signed-out users  | sign in                                |
+| `/`       | signed-in users   | "Hello World" and a sign-out button    |
+
+Signed-out visitors are sent to `/signin`; signed-in visitors are sent away from `/signin` and `/signup`.
+
+## Database
+
+| Item     | Name          | Notes                                                        |
+| -------- | ------------- | ------------------------------------------------------------ |
+| Database | `PugStreamX`  | fixed in `src/lib/db/config.ts`                              |
+| Users    | `ps_users`    | unique `email` (lowercased); password stored as scrypt hash   |
+| Sessions | `ps_sessions` | `_id` = SHA-256 of the cookie token; auto-deleted on expiry  |
+
+Sessions last 30 days.
 
 ## Structure
 
 ```
-scripts/
-  seed.ts, seed-data.ts   # sample data + indexes (npm run db:seed)
 src/
-  lib/
-    mongodb.ts            # shared MongoClient + typed collections (server-only)
-    data.ts               # all queries; reads cached with "use cache" + cacheTag
-    types.ts              # Stream / Category document types
+  proxy.ts                       redirects signed-out visitors to /signin
   app/
-    page.tsx              # home
-    browse/page.tsx       # category filter + search
-    watch/[id]/page.tsx   # stream page with chat
-    api/
-      categories/         # GET  /api/categories
-      streams/            # GET  /api/streams?category=&q=   POST /api/streams
-      streams/[id]/       # GET  /api/streams/:id
+    (auth)/signin, (auth)/signup sign-in / sign-up pages
+    page.tsx                     Hello World (signed in)
+  components/ui/                 ps-button, ps-input, ps-form-field, ps-alert, …
+  features/
+    auth/                        actions, dal, session, password, validation, components/ps-*
+    users/                       types, queries, mutations
+  lib/db/                        config.ts (names, indexes), client.ts (connection)
 ```
-
-To add a collection: add its type to `types.ts`, expose it from `getCollections()` in `mongodb.ts`,
-and put its queries in `data.ts`. After a write, call `revalidateTag("<tag>", "max")` (route handlers)
-or `updateTag("<tag>")` (server actions) so cached reads refresh.
-
-## API
-
-```bash
-curl localhost:3000/api/streams?category=gaming
-curl -X POST localhost:3000/api/streams -H 'content-type: application/json' \
-  -d '{"title":"My stream","streamer":"Me","category":"coding","tags":["Next.js"]}'
-```
-
-`POST /api/streams` has no authentication yet. Add auth before deploying publicly.

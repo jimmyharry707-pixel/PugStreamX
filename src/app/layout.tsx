@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Navbar from "@/components/Navbar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,10 +14,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "PugStreamX — Live streaming, pug approved",
+    default: "PugStreamX",
     template: "%s · PugStreamX",
   },
-  description: "Watch live streams of gaming, music, art, coding, and plenty of pugs.",
+  description: "PugStreamX live streaming.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -27,13 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <footer className="border-t border-white/10 py-6 text-center text-sm text-zinc-500">
-          © PugStreamX. Made with 🐾 and Next.js.
-        </footer>
-      </body>
+      <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
 }
