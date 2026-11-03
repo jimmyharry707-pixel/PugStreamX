@@ -29,6 +29,8 @@ export type ScheduleDoc = {
   jobDescriptionUrl: string;
   /** Set by the Profile Manager: whether the Caller must add a screen share link. */
   screenShareRequired?: boolean;
+  /** Set by the Profile Manager: a tech supporter (Developer) is needed. Missing on older schedules (false). */
+  techSupportRequired?: boolean;
   /** Added by a Caller, only while screen share is required. */
   screenShareUrl: string | null;
   /** The `uid`s of other schedules in the group, in the order entered. Missing on older ones. */
@@ -52,7 +54,7 @@ export type ScheduleDoc = {
 export type ScheduleInput = Pick<
   ScheduleDoc,
   "title" | "start" | "end" | "clientCompany" | "interviewer" | "resumeUrl" | "jobDescriptionUrl" | "note"
-> & { timeZone: string; meetingUrl: string; screenShareRequired: boolean; linkedUids: string[] };
+> & { timeZone: string; meetingUrl: string; screenShareRequired: boolean; techSupportRequired: boolean; linkedUids: string[] };
 
 /** The fields a Caller fills in. */
 export type CallerInput = { screenShareUrl: string | null; callerNote: string | null };
@@ -83,6 +85,7 @@ export type Schedule = Omit<ScheduleInput, "start" | "end" | "timeZone" | "meeti
 
 /**
  * What the viewer may do in a calendar: "manage" (Profile Manager: everything), "call" (Caller:
- * see everything, fill in the caller fields) or "view" (super-admin: see any group's calendar).
+ * see everything, fill in the caller fields), "support" (Developer: see only the schedules that
+ * need a tech supporter, read-only) or "view" (super-admin: see any group's calendar).
  */
-export type CalendarMode = "manage" | "call" | "view";
+export type CalendarMode = "manage" | "call" | "support" | "view";

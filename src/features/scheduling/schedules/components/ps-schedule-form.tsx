@@ -124,6 +124,14 @@ export function PsScheduleForm({
         defaultChecked={values.screenShareRequired === "on"}
         className="rounded-lg border border-white/10 bg-gray-800/40 px-3 py-2.5"
       />
+      <PsSwitch
+        id="techSupportRequired"
+        name="techSupportRequired"
+        label="Tech supporter needed"
+        hint="When on, the group's Developers see this schedule (read-only)."
+        defaultChecked={values.techSupportRequired === "on"}
+        className="rounded-lg border border-white/10 bg-gray-800/40 px-3 py-2.5"
+      />
       <PsLinkedSchedulesField values={linkedValues} rowErrors={state?.linkedErrors} errors={errors.linkedUids} />
       <PsField id="note" label="Note (optional)" errors={errors.note}>
         {(p) => <PsTextarea name="note" rows={3} maxLength={NOTE_MAX} defaultValue={values.note} {...p} />}

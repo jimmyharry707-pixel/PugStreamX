@@ -18,7 +18,7 @@ export default async function CalendarPage() {
       <PsEmptyState emoji="🗓️" title="No calendar yet">
         {access.reason === "group"
           ? "You're not in a group yet. An administrator needs to add you to one; then you'll see its calendar here."
-          : "The calendar is for Profile Managers and Callers. Ask an administrator to give you a role and a group."}
+          : "The calendar is for Profile Managers, Callers and Developers. Ask an administrator to give you a role and a group."}
       </PsEmptyState>
     );
   }
@@ -32,7 +32,7 @@ export default async function CalendarPage() {
           title="No groups yet"
           action={<PsLinkButton href={ADMIN_GROUPS_PATH}>Create a group</PsLinkButton>}
         >
-          Each group has its own calendar. Create a group, then add Profile Managers and Callers to it.
+          Each group has its own calendar. Create a group, then add Profile Managers, Callers and Developers to it.
         </PsEmptyState>
       );
     }

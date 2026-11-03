@@ -29,6 +29,7 @@ export function toSchedule(doc: ScheduleDoc, linked: LinkedSchedule[] = []): Sch
     // Older schedules had a link typed by their creator: count that as required.
     screenShareRequired: doc.screenShareRequired ?? !!doc.screenShareUrl,
     screenShareUrl: doc.screenShareUrl ?? null,
+    techSupportRequired: doc.techSupportRequired ?? false,
     linkedUids: linkedUidsOf(doc),
     linked,
     note: doc.note,
@@ -105,11 +106,17 @@ async function upgradeOlderSchedules(groupId: ObjectId) {
   groupsChecked.add(groupId.toHexString());
 }
 
-/** Schedules with their linked schedules (from the same group) filled in. */
-export async function withLinks(groupId: ObjectId, docs: ScheduleDoc[]): Promise<Schedule[]> {
+/** Developers ("support" mode) only see schedules that need a tech supporter. */
+const TECH_SUPPORT = { techSupportRequired: true } as const;
+
+/**
+ * Schedules with their linked schedules (from the same group) filled in. With `techSupportOnly`
+ * (Developers), only linked schedules that need a tech supporter are included.
+ */
+export async function withLinks(groupId: ObjectId, docs: ScheduleDoc[], techSupportOnly = false): Promise<Schedule[]> {
   const uids = [...new Set(docs.flatMap(linkedUidsOf))];
   const schedules = await getCollection<ScheduleDoc>("schedules");
-  const linkedDocs = uids.length ? await schedules.find({ groupId, uid: { $in: uids } }).toArray() : [];
+  const linkedDocs = uids.length ? await schedules.find({ groupId, uid: { $in: uids }, ...(techSupportOnly ? TECH_SUPPORT : {}) }).toArray() : [];
   const byUid = new Map(
     linkedDocs.map((d) => [d.uid, { uid: d.uid, title: d.title, start: d.start.toISOString(), end: d.end.toISOString() }]),
   );
@@ -121,23 +128,29 @@ export async function withLinks(groupId: ObjectId, docs: ScheduleDoc[]): Promise
   );
 }
 
-/** A group's schedules that overlap [from, to), earliest first. */
-export async function listSchedules(groupId: ObjectId, from: Date, to: Date): Promise<Schedule[]> {
+/**
+ * A group's schedules that overlap [from, to), earliest first. `techSupportOnly` (Developers,
+ * `techSupportOnly(access)`): only those that need a tech supporter.
+ */
+export async function listSchedules(groupId: ObjectId, from: Date, to: Date, techSupportOnly = false): Promise<Schedule[]> {
   await upgradeOlderSchedules(groupId);
   const schedules = await getCollection<ScheduleDoc>("schedules");
   const docs = await schedules
-    .find({ groupId, start: { $lt: to }, end: { $gt: from } })
+    .find({ groupId, start: { $lt: to }, end: { $gt: from }, ...(techSupportOnly ? TECH_SUPPORT : {}) })
     .sort({ start: 1 })
     .toArray();
-  return withLinks(groupId, await withUids(docs));
+  return withLinks(groupId, await withUids(docs), techSupportOnly);
 }
 
-/** One of the group's schedules by its `uid`, or null (also for other groups' schedules). */
-export async function findScheduleByUid(groupId: ObjectId, uid: string): Promise<Schedule | null> {
+/**
+ * One of the group's schedules by its `uid`, or null (also for other groups' schedules, and for
+ * Developers, `techSupportOnly`, schedules that don't need a tech supporter).
+ */
+export async function findScheduleByUid(groupId: ObjectId, uid: string, techSupportOnly = false): Promise<Schedule | null> {
   await upgradeOlderSchedules(groupId);
   const schedules = await getCollection<ScheduleDoc>("schedules");
-  const doc = await schedules.findOne({ groupId, uid });
-  return doc ? (await withLinks(groupId, [doc]))[0] : null;
+  const doc = await schedules.findOne({ groupId, uid, ...(techSupportOnly ? TECH_SUPPORT : {}) });
+  return doc ? (await withLinks(groupId, [doc], techSupportOnly))[0] : null;
 }
 
 /** Which of `uids` are schedules in the group. */

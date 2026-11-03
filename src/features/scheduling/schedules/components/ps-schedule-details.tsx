@@ -60,7 +60,8 @@ function ScheduleId({ uid }: { uid: string }) {
  * `backTitle` / `onBack` return to the schedule this one was opened from.
  *
  * Everyone who can open it sees every field. `mode` decides the rest: "manage" (Profile Manager)
- * shows Edit and Delete, "call" (Caller) shows the caller form, "view" (super-admin) nothing more.
+ * shows Edit and Delete, "call" (Caller) shows the caller form, "support" (Developer) and "view"
+ * (super-admin) nothing more.
  */
 export function PsScheduleDetails({
   schedule,
@@ -178,6 +179,9 @@ export function PsScheduleDetails({
             // Required, but the Caller hasn't added the link yet.
             <PsBadge variant="danger">Required</PsBadge>
           )}
+        </Row>
+        <Row label="Tech supporter">
+          {schedule.techSupportRequired ? <PsBadge variant="info">Needed</PsBadge> : <span className="text-gray-500">Not needed</span>}
         </Row>
         <Row label="Linked schedules">
           {linked.length > 0 ? (

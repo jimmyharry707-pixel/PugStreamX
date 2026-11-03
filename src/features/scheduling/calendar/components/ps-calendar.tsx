@@ -37,6 +37,7 @@ function toEvents(schedule: Schedule, timeZone: string): CalendarEvent[] {
     time: formatTimeRange(new Date(schedule.start), new Date(schedule.end), timeZone),
     detail: schedule.clientCompany,
     done: !!schedule.doneAt,
+    techSupport: schedule.techSupportRequired,
   };
   if (isSameDay(start.day, end.day)) return [{ ...base, key: schedule.id, day: start.day, start: start.minutes, end: end.minutes }];
   return [
@@ -58,6 +59,7 @@ function toEvents(schedule: Schedule, timeZone: string): CalendarEvent[] {
  * - "manage" (Profile Manager): Create (or click or drag in an empty spot) opens the form; click a
  *   schedule for its details, then Edit or Delete; drag a schedule (or its bottom edge) to move it.
  * - "call" (Caller): see schedules; in the details, add the screen share link and a caller note.
+ * - "support" (Developer): see only the schedules that need a tech supporter, read-only.
  * - "view" (super-admin): see any group's calendar, picked from `groups` (`?group=<id>`).
  *
  * Keyboard shortcuts: T this week, J / N next week, K / P previous week, C create (manage only).
@@ -204,6 +206,7 @@ export function PsCalendar({ mode, groups = [] }: { mode: CalendarMode; groups?:
       resumeUrl: schedule.resumeUrl,
       jobDescriptionUrl: schedule.jobDescriptionUrl,
       screenShareRequired: schedule.screenShareRequired ? "on" : "",
+      techSupportRequired: schedule.techSupportRequired ? "on" : "",
       linkedUids: schedule.linkedUids,
       note: schedule.note ?? "",
     };
@@ -233,6 +236,10 @@ export function PsCalendar({ mode, groups = [] }: { mode: CalendarMode; groups?:
                 </option>
               ))}
             </PsSelect>
+          ) : mode === "support" ? (
+            <span data-support-note className="hidden rounded-full border border-info-400/30 bg-info-500/10 px-3 py-1 text-xs text-info-200 md:inline">
+              Tech support schedules only
+            </span>
           ) : null
         }
       />

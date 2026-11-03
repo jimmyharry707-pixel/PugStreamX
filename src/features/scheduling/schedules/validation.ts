@@ -75,6 +75,8 @@ export const scheduleSchema = z
     jobDescriptionUrl: link("Enter the job description link."),
     // A switch: sent as "on" when on, missing when off. The Caller adds the link itself.
     screenShareRequired: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
+    // A switch too: whether a tech supporter (Developer) is needed. Developers see only these.
+    techSupportRequired: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
     // Other schedules' IDs, one per row. Whether they're in the group is checked in the action. Spaces and dashes are ignored ("482 910 3756"); empty rows and repeats dropped.
     linkedUids: z
       .array(

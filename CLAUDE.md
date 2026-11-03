@@ -100,15 +100,18 @@ src/
   |---|---|---|
   | `"manage"` | Profile Manager (role 1) in a group | Everything on their group's schedules (any PM's): create, edit, drag, delete |
   | `"call"` | Caller (role 2) in a group | See every field (read-only); fill in the caller fields with `saveCallerFields` |
+  | `"support"` | Developer (role 4) in a group | See only the group's schedules with **Tech supporter needed**, read-only (every field; no forms) |
   | `"view"` | Super-admin | See any group's calendar read-only (`?group=<id>`, group picker in the toolbar) |
   | `"none"` | Anyone else, or a PM/Caller without a group | No calendar; the page shows why |
 
   - Every action re-checks the mode, so hidden buttons are never the only guard.
   - The grid's `editable` prop turns off drag, click-to-create and resize for anyone who isn't a manager.
+  - **Developers** (`techSupportOnly(access)`): `listSchedules`, `findScheduleByUid` and `withLinks` take a `techSupportOnly` flag, so the week, opening a schedule by ID (`/api/schedules/[uid]`, 404 otherwise) and the linked-schedule lists only ever include schedules with `techSupportRequired`. The toolbar shows "Tech support schedules only".
 - **Fields:**
   - Required (set by the PM): `title`, `start` / `end`, `clientCompany`, `interviewer`, `meetingUrl`, `resumeUrl`, `jobDescriptionUrl`.
   - Optional (stored as `null` when empty): `note` (the PM's). `linkedUids` is a list (empty when none).
   - **Screen share:** the PM sets only the `screenShareRequired` switch (`PsSwitch`). The Caller adds `screenShareUrl`, and only while it's required. Turning it off clears the link. Older schedules with a link count as required.
+  - **Tech supporter needed:** the PM's `techSupportRequired` switch (`PsSwitch`; missing on older schedules = off). The details show "Needed" (blue `info` badge), and the block shows a wrench (`CalendarEvent.techSupport`). It decides what Developers see.
   - **`callerNote`** ("Note (Caller)") is written by Callers. The PM, the founder and Callers all see it.
   - **Done (`doneAt`):** the Caller form (`PsCallerForm`) follows the schedule's **`start`**, not its end, because an interview can finish early. Its `data-phase` is `before`, `after` or `done`.
     - **Before the interview starts:** only the screen share link (when required) and Save. Without a required link there's nothing to fill in; a line says so.
@@ -200,8 +203,8 @@ src/
 
 ### Roles and account activation
 
-- `UserDoc.role` is a number from `ROLES` in `src/features/account/users/roles.ts`, starting at 0. **0 is the founder (super-admin), 1 is Profile Manager (makes and manages their group's schedules), 2 is Caller (sees their group's calendar, fills in the screen share link when required and "Note (Caller)").** See the Schedules section for exactly what each can do. New accounts get `role: null` ("No role") until one is given. To add a role, add it to `ROLES` with the next number and give it a label in `ROLE_LABELS`.
-- Check permissions with the helpers in `roles.ts` (`isSuperAdmin`, `isProfileManager`, `isCaller`), `PublicUser.isSuperAdmin` or `calendarAccess()`, never by comparing raw numbers in pages.
+- `UserDoc.role` is a number from `ROLES` in `src/features/account/users/roles.ts`, starting at 0. **0 is the founder (super-admin), 1 is Profile Manager (makes and manages their group's schedules), 2 is Caller (sees their group's calendar, fills in the screen share link when required and "Note (Caller)"), 4 is Developer (sees their group's schedules that need a tech supporter, read-only; 3 is not used).** See the Schedules section for exactly what each can do. New accounts get `role: null` ("No role") until one is given. To add a role, add it to `ROLES` with the next number and give it a label in `ROLE_LABELS`.
+- Check permissions with the helpers in `roles.ts` (`isSuperAdmin`, `isProfileManager`, `isCaller`, `isDeveloper`), `PublicUser.isSuperAdmin` or `calendarAccess()`, never by comparing raw numbers in pages.
 - New accounts start with `active: false`. Sign-up then creates no session and sends the user to `/signin`, and sign-in is refused (only after the password matched) until a super-admin activates the account. Documents without `active` count as inactive (`isActive()` in `features/account/users/queries.ts`).
 - `getCurrentUser()` returns null for inactive accounts, and deactivating an account deletes all its sessions, so access ends immediately.
 - If no founder exists, `ensureFounder()` (run on sign-up and sign-in) makes the **oldest** account the founder and activates it. On a new database, the first sign-up becomes the founder.

@@ -11,6 +11,8 @@ export const ROLES = {
   profileManager: 1,
   /** Sees their group's calendar; adds the screen share link (when required) and a caller note. */
   caller: 2,
+  /** Sees their group's schedules that need a tech supporter, read-only. (3 is not used.) */
+  developer: 4,
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
@@ -19,6 +21,7 @@ const ROLE_LABELS: Record<Role, string> = {
   [ROLES.founder]: "Founder",
   [ROLES.profileManager]: "Profile Manager",
   [ROLES.caller]: "Caller",
+  [ROLES.developer]: "Developer",
 };
 
 export function roleLabel(role: number | null): string {
@@ -49,4 +52,9 @@ export function isProfileManager(role: number | null): boolean {
 /** Callers see their group's schedules and fill in the caller fields. */
 export function isCaller(role: number | null): boolean {
   return role === ROLES.caller;
+}
+
+/** Developers see their group's schedules that need a tech supporter, and change nothing. */
+export function isDeveloper(role: number | null): boolean {
+  return role === ROLES.developer;
 }

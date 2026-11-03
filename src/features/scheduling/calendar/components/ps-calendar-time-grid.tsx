@@ -34,6 +34,8 @@ export type CalendarEvent = {
   detail?: string;
   /** Shows a "Done" badge (the Caller has finished it). */
   done?: boolean;
+  /** Shows a wrench: a tech supporter is needed. */
+  techSupport?: boolean;
 };
 
 /**
@@ -269,7 +271,7 @@ export function PsCalendarTimeGrid({
                     <button
                       key={event.key}
                       type="button"
-                      aria-label={`${event.title}, ${event.time}${event.detail ? `, ${event.detail}` : ""}${event.done ? ", done" : ""}`}
+                      aria-label={`${event.title}, ${event.time}${event.detail ? `, ${event.detail}` : ""}${event.techSupport ? ", tech supporter needed" : ""}${event.done ? ", done" : ""}`}
                       data-done={event.done || undefined}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -338,6 +340,11 @@ export function PsCalendarTimeGrid({
                       )}
                     >
                       <span className="flex min-w-0 items-center gap-1">
+                        {event.techSupport && (
+                          <svg data-tech-support viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" className="size-3 shrink-0 text-info-300" aria-hidden>
+                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                          </svg>
+                        )}
                         <span className="truncate font-semibold">{event.title}</span>
                         {event.done && (
                           <span className="ml-auto inline-flex shrink-0 items-center gap-0.5 rounded-full bg-success-500/20 px-1.5 text-[10px] font-semibold text-success-300 ring-1 ring-inset ring-success-400/40">

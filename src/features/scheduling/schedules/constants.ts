@@ -11,6 +11,7 @@ export const SCHEDULE_FIELDS = [
   "resumeUrl",
   "jobDescriptionUrl",
   "screenShareRequired",
+  "techSupportRequired",
   "linkedUids",
   "note",
 ] as const;
