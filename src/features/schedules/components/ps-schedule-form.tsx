@@ -80,6 +80,17 @@ export function PsScheduleForm({
       </div>
 
       <PsFormField
+        label="Meeting link"
+        name="meetingUrl"
+        type="url"
+        inputMode="url"
+        required
+        maxLength={URL_MAX}
+        placeholder="https://"
+        defaultValue={values.meetingUrl}
+        errors={errors.meetingUrl}
+      />
+      <PsFormField
         label="Resume link"
         name="resumeUrl"
         type="url"
@@ -110,6 +121,26 @@ export function PsScheduleForm({
             maxLength={URL_MAX}
             placeholder="https://"
             defaultValue={values.screenShareUrl}
+            {...p}
+          />
+        )}
+      </PsField>
+      <PsField
+        id="linkedUid"
+        label="Linked schedule (optional)"
+        errors={errors.linkedUid}
+        hint="Another schedule's 10-digit ID. Copy it from that schedule's details."
+      >
+        {(p) => (
+          <PsInput
+            name="linkedUid"
+            autoComplete="off"
+            spellCheck={false}
+            inputMode="numeric"
+            maxLength={20}
+            placeholder="e.g. 4829103756"
+            defaultValue={values.linkedUid}
+            className="font-mono"
             {...p}
           />
         )}

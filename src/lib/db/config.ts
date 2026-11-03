@@ -46,5 +46,9 @@ export const INDEXES: Record<CollectionKey, IndexDescription[]> = {
   schedules: [
     // The calendar loads one member's schedules for a week.
     { key: { userId: 1, start: 1 } },
+    // Schedule IDs are unique; finding one by ID (and linked schedules) uses this.
+    { key: { uid: 1 }, unique: true, partialFilterExpression: { uid: { $exists: true } } },
+    // Clearing links to a deleted schedule.
+    { key: { userId: 1, linkedUid: 1 } },
   ],
 };

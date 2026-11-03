@@ -10,6 +10,11 @@ export function formatScheduleDate(start: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en", { timeZone, dateStyle: "full" }).format(start);
 }
 
+/** "Thu, Nov 5" */
+export function formatShortDate(start: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en", { timeZone, weekday: "short", month: "short", day: "numeric" }).format(start);
+}
+
 /** Minutes since midnight → "HH:MM" for a time input (kept within the day). */
 export function minutesToTime(minutes: number): string {
   const m = Math.min(Math.max(Math.round(minutes), 0), 23 * 60 + 59);

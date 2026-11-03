@@ -71,6 +71,21 @@
     min-height: 1rem;
   }
 
+  /* The grab strip along an event's bottom edge, for changing when it ends. */
+  .ps-calendar-time-grid__resize {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 6px;
+    cursor: ns-resize;
+  }
+
+  /* The range being dragged for a new event (or an event being moved): full width, above the other blocks, not clickable. */
+  .ps-calendar-time-grid__draft {
+    z-index: 2;
+    pointer-events: none;
+  }
+
   /* Current time, above event blocks. --ps-calendar-now is the share of the day gone (0 to 1). */
   .ps-calendar-time-grid__now {
     position: absolute;

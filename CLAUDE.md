@@ -84,8 +84,19 @@ src/
 
 - These are the events on the calendar (e.g. interviews), stored in `ps_schedules`. **Each member sees and changes only their own**: every query and mutation filters by `userId`, and the owner id is never sent to the browser (`toSchedule()`).
 - **Fields:**
-  - Required: `title`, `start` / `end`, `clientCompany`, `interviewer`, `resumeUrl`, `jobDescriptionUrl`.
-  - Optional (stored as `null` when empty): `screenShareUrl`, `note`.
+  - Required: `title`, `start` / `end`, `clientCompany`, `interviewer`, `meetingUrl`, `resumeUrl`, `jobDescriptionUrl`.
+  - Optional (stored as `null` when empty): `screenShareUrl`, `linkedUid`, `note`.
+  - Older schedules may lack `meetingUrl`. `Schedule.meetingUrl` is then `null` and shows "—"; Edit requires it.
+- **Schedule ID (`uid`):** every schedule has a unique **10-digit** ID (e.g. `"4829103756"`, a string; `SCHEDULE_UID_PATTERN`), the ID members see.
+  - It's shown in the details with a Copy button, and it's what "Linked schedule" takes.
+  - It's a random number set on create (`newScheduleUid()`). On a rare repeat, the unique index rejects it and a new one is drawn (`isDuplicateUid`).
+  - Older schedules (no ID, or an earlier long UUID) get a 10-digit ID when first read (`withUids` in `queries.ts`). Links to the old ID are moved to the new one. `listSchedules` does a full pass once per member per server process.
+  - It has a unique index. Keep the database `_id` (`Schedule.id`) for actions and internal use; members never see it.
+- **Linked schedule:** `linkedUid` is the `uid` of another of the member's own schedules.
+  - `saveSchedule` checks it exists, is theirs, and isn't the schedule itself; other members' IDs get the same "doesn't exist" error. Spaces and dashes are ignored ("482 910 3756").
+  - Reads fill in `Schedule.linked` (title and times) with `withLinks()`.
+  - Deleting a schedule clears links to it.
+  - In the details, clicking the linked schedule loads it by ID from `GET /api/schedules/[uid]` (owner only, 404 otherwise; it may be in another week). It opens in the same dialog, with "Back to …" (a stack in `DialogState.back`).
   - Links must be `http(s)` (`scheduleSchema`), and `safeUrl()` checks them again before rendering. Links open in a new tab with `rel="noopener noreferrer"`.
 - **Time:** `start` / `end` are exact moments (UTC `Date`s).
   - The form has a **Time zone** field (`PsTimeZoneSelect variant="field"`), which starts on the calendar's zone. It sends `date`, `from`, `to` and `timeZone`; `scheduleSchema` turns them into moments with `zonedToUtc`.
@@ -95,7 +106,14 @@ src/
   - The calendar shows them in the chosen zone, so changing zone moves the blocks. A block crossing midnight is drawn on both days.
 - **Reads:** the calendar changes weeks in the browser, so it loads schedules from `GET /api/schedules?from&to` (`useSchedules`), not from the page. That route returns 401 when signed out and allows at most `SCHEDULE_RANGE_MAX_DAYS`.
 - **Writes:** `saveSchedule` creates, or updates when the form has a `scheduleId`; `removeSchedule` deletes (after the confirm popup). The calendar then calls `reload()`.
-- **UI:** Create is a toolbar button on `sm`+ and a floating button on phones. Clicking an empty slot opens the form at that half hour. Clicking a block opens `PsScheduleDetails` with Edit and Delete.
+- **UI:** Create is a toolbar button on `sm`+ and a floating button on phones. Clicking a block opens `PsScheduleDetails` with Edit and Delete.
+  - **Drag to create** (Google style, in `PsCalendarTimeGrid`): dragging up or down in a day with a mouse or pen draws a preview snapped to 15 minutes (`DRAG_STEP`). Releasing opens the form with that day and range. Dragging near the top or bottom edge scrolls the hours.
+  - A plain click or tap opens the form for 1 hour at the half hour clicked. Touch drags still scroll the grid.
+  - A press that starts on a block never creates one, even if released on empty space.
+  - **Drag to change time:** dragging a block moves it to another time or day; dragging its bottom strip (`ps-calendar-time-grid__resize`) changes when it ends (at least 15 minutes). Both snap to 15 minutes, and Esc cancels.
+    - The grid reports an `EventChange` (days and minutes). `PsCalendar` turns it into exact times in the calendar's zone (moves keep wall-clock time, so daylight saving can't shift them) and shows the change at once (`patch()`).
+    - It then saves with the `reschedule` action (`rescheduleSchema`: owner only, end after start, at most 24 h). If saving fails, `reload()` puts the block back.
+    - The schedule keeps its own `timeZone`. Touch doesn't drag blocks; it scrolls.
 - Blocks use the `event` color role. Overlapping blocks share the column width (`layoutEvents` in `features/calendar/event-layout.ts`).
 - To add a schedule field: add it to `SCHEDULE_FIELDS`, `scheduleSchema`, `ScheduleDoc` / `ScheduleInput` / `toSchedule`, `PsScheduleForm`, `PsScheduleDetails`, and `editDefaults` in `ps-calendar.tsx`.
 

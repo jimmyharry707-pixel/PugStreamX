@@ -5,7 +5,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PsDialog } from "@/components/ui/ps-dialog";
 import { PsScheduleDetails } from "@/features/schedules/components/ps-schedule-details";
 import { PsScheduleForm, type ScheduleFormDefaults } from "@/features/schedules/components/ps-schedule-form";
-import { formatTimeRange, minutesToTime } from "@/features/schedules/format";
+import { reschedule } from "@/features/schedules/actions";
+import { SCHEDULES_API_PATH } from "@/features/schedules/constants";
+import { formatShortDate, formatTimeRange, minutesToTime } from "@/features/schedules/format";
 import type { Schedule } from "@/features/schedules/types";
 import { useSchedules } from "@/features/schedules/use-schedules";
 import { snackbar } from "@/features/snackbar/store";
@@ -13,12 +15,13 @@ import { zonedTime, zonedToUtc } from "@/lib/utils/time-zone";
 import { addDays, isSameDay, parseDateKey, toDateKey, weekDays } from "../dates";
 import { deviceTimeZone, setTimeZoneSetting, timeZoneOffset, useTimeZoneSetting } from "../time-zone";
 import { useNow } from "../use-now";
-import { PsCalendarTimeGrid, type CalendarEvent } from "./ps-calendar-time-grid";
+import { PsCalendarTimeGrid, type CalendarEvent, type EventChange } from "./ps-calendar-time-grid";
 import { PsCalendarToolbar } from "./ps-calendar-toolbar";
 
 type DialogState =
   | { mode: "create"; defaults: ScheduleFormDefaults & { timeZone: string } }
-  | { mode: "view"; schedule: Schedule }
+  /** `back`: the schedules this one was opened from through links, newest last. */
+  | { mode: "view"; schedule: Schedule; back: Schedule[] }
   | { mode: "edit"; schedule: Schedule };
 
 /** A schedule as blocks on the grid, in `timeZone`: one block, or two if it crosses midnight. */
@@ -47,8 +50,8 @@ function toEvents(schedule: Schedule, timeZone: string): CalendarEvent[] {
  * "Today", the current-time line and schedule times follow the time zone picked in the toolbar
  * (remembered in this browser; the device's by default).
  *
- * Schedules: Create (or click an empty spot) opens the form; click a schedule for its details,
- * then Edit or Delete.
+ * Schedules: Create (or click or drag in an empty spot) opens the form; click a schedule for its
+ * details, then Edit or Delete; drag a schedule (or its bottom edge) to change its time.
  *
  * Keyboard shortcuts: T this week, J / N next week, K / P previous week, C create.
  */
@@ -69,7 +72,7 @@ export function PsCalendar() {
     const nextWeek = toDateKey(addDays(parseDateKey(weekKey)!, 7));
     return { from: zonedToUtc(weekKey, "00:00", timeZone), to: zonedToUtc(nextWeek, "00:00", timeZone) };
   }, [weekKey, timeZone]);
-  const { schedules, failed, reload } = useSchedules(range);
+  const { schedules, failed, reload, patch } = useSchedules(range);
 
   useEffect(() => {
     if (failed) snackbar.error("Couldn't load your schedules. Check your connection and reload the page.");
@@ -80,10 +83,10 @@ export function PsCalendar() {
   }, []);
 
   /**
-   * Opens the form for a new schedule: on `day` at `minutes`, else at the next hour today (or
-   * 9 AM on the week's first day when another week is shown).
+   * Opens the form for a new schedule: on `day` from `minutes` to `endMinutes` (an hour if not
+   * given), else at the next hour today (or 9 AM on the week's first day when another week is shown).
    */
-  const create = (day?: Date, minutes?: number) => {
+  const create = (day?: Date, minutes?: number, endMinutes?: number) => {
     if (!date || !zoned || !timeZone) return;
     const days = weekDays(date);
     const onToday = days.some((d) => isSameDay(d, zoned.day));
@@ -91,7 +94,7 @@ export function PsCalendar() {
     const from = minutes ?? (day || !onToday ? 9 * 60 : Math.min(Math.ceil(zoned.minutes / 60) * 60, 23 * 60));
     setDialog({
       mode: "create",
-      defaults: { date: toDateKey(target), from: minutesToTime(from), to: minutesToTime(from + 60), timeZone },
+      defaults: { date: toDateKey(target), from: minutesToTime(from), to: minutesToTime(endMinutes ?? from + 60), timeZone },
     });
   };
   // The key handler below reads the latest `create` without re-subscribing every render.
@@ -132,6 +135,37 @@ export function PsCalendar() {
     reload();
   };
 
+  /**
+   * A schedule dragged in the grid: work out its new exact times (moves are wall-clock days and
+   * minutes in the chosen zone, so daylight-saving changes don't shift it), show them right away,
+   * then save. If saving fails, reloading puts it back.
+   */
+  const onEventChange = async (id: string, change: EventChange) => {
+    const schedule = schedules.find((s) => s.id === id);
+    if (!schedule) return;
+    const start = new Date(schedule.start);
+    const end = new Date(schedule.end);
+    let newStart = start;
+    let newEnd: Date;
+    if (change.mode === "move") {
+      const from = zonedTime(start, timeZone);
+      const minutes = from.minutes + change.minutes;
+      const day = addDays(from.day, change.days + Math.floor(minutes / 1440));
+      newStart = zonedToUtc(toDateKey(day), minutesToTime(((minutes % 1440) + 1440) % 1440), timeZone);
+      newEnd = new Date(newStart.getTime() + (end.getTime() - start.getTime()));
+    } else {
+      newEnd = new Date(Math.max(end.getTime() + change.minutes * 60_000, start.getTime() + 15 * 60_000));
+    }
+    patch(id, { start: newStart.toISOString(), end: newEnd.toISOString() });
+    const result = await reschedule(id, newStart.toISOString(), newEnd.toISOString());
+    if (result.ok) {
+      snackbar.success(`"${schedule.title}" is now ${formatShortDate(newStart, timeZone)}, ${formatTimeRange(newStart, newEnd, timeZone)}.`);
+    } else {
+      snackbar.error(result.message);
+    }
+    reload();
+  };
+
   /** The form's values for editing a schedule, in the zone it was entered in. */
   const editDefaults = (schedule: Schedule): ScheduleFormDefaults & { timeZone: string } => {
     const zone = schedule.timeZone ?? timeZone;
@@ -146,9 +180,11 @@ export function PsCalendar() {
       to: minutesToTime(isSameDay(start.day, end.day) ? end.minutes : 23 * 60 + 59),
       clientCompany: schedule.clientCompany,
       interviewer: schedule.interviewer,
+      meetingUrl: schedule.meetingUrl ?? "",
       resumeUrl: schedule.resumeUrl,
       jobDescriptionUrl: schedule.jobDescriptionUrl,
       screenShareUrl: schedule.screenShareUrl ?? "",
+      linkedUid: schedule.linkedUid ?? "",
       note: schedule.note ?? "",
     };
   };
@@ -170,11 +206,12 @@ export function PsCalendar() {
         nowMinutes={zoned.minutes}
         zoneLabel={zoned.label}
         events={events}
+        onEventChange={onEventChange}
         onEventClick={(id) => {
           const schedule = schedules.find((s) => s.id === id);
-          if (schedule) setDialog({ mode: "view", schedule });
+          if (schedule) setDialog({ mode: "view", schedule, back: [] });
         }}
-        onSlotClick={(day, minutes) => create(day, minutes)}
+        onSlotSelect={(day, start, end) => create(day, start, end)}
       />
 
       {/* Phones: Create floats at the bottom right, like Google Calendar. */}
@@ -192,8 +229,23 @@ export function PsCalendar() {
       {dialog?.mode === "view" && (
         <PsDialog title={dialog.schedule.title} onClose={() => setDialog(null)}>
           <PsScheduleDetails
+            key={dialog.schedule.id}
             schedule={dialog.schedule}
             timeZone={timeZone}
+            // A linked schedule may be in another week, so it's loaded by its ID.
+            onOpenLinked={async (uid) => {
+              const res = await fetch(`${SCHEDULES_API_PATH}/${uid}`, { cache: "no-store" }).catch(() => null);
+              if (!res?.ok) return res?.status === 404 ? "That schedule no longer exists." : "Couldn't open that schedule. Try again.";
+              const { schedule } = (await res.json()) as { schedule: Schedule };
+              setDialog({ mode: "view", schedule, back: [...dialog.back, dialog.schedule] });
+              return null;
+            }}
+            backTitle={dialog.back.at(-1)?.title}
+            onBack={
+              dialog.back.length
+                ? () => setDialog({ mode: "view", schedule: dialog.back.at(-1)!, back: dialog.back.slice(0, -1) })
+                : undefined
+            }
             onEdit={() => setDialog({ mode: "edit", schedule: dialog.schedule })}
             onDeleted={(message) => {
               setDialog(null);

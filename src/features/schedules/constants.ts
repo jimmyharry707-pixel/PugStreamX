@@ -7,9 +7,11 @@ export const SCHEDULE_FIELDS = [
   "timeZone",
   "clientCompany",
   "interviewer",
+  "meetingUrl",
   "resumeUrl",
   "jobDescriptionUrl",
   "screenShareUrl",
+  "linkedUid",
   "note",
 ] as const;
 export type ScheduleField = (typeof SCHEDULE_FIELDS)[number];
@@ -23,3 +25,6 @@ export const NOTE_MAX = 2000;
 export const SCHEDULE_RANGE_MAX_DAYS = 45;
 
 export const SCHEDULES_API_PATH = "/api/schedules";
+
+/** A schedule ID: 10 digits, e.g. "4829103756". */
+export const SCHEDULE_UID_PATTERN = /^[1-9]\d{9}$/;

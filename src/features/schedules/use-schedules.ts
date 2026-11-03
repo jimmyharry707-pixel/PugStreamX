@@ -32,10 +32,16 @@ export function useSchedules(range: { from: Date; to: Date } | null) {
 
   const reload = useCallback(() => setVersion((v) => v + 1), []);
 
+  /** Changes a loaded schedule right away (before the server confirms); `reload()` replaces it. */
+  const patch = useCallback((id: string, changes: Partial<Schedule>) => {
+    setLoaded((current) => current && { ...current, schedules: current.schedules.map((s) => (s.id === id ? { ...s, ...changes } : s)) });
+  }, []);
+
   return {
     schedules: loaded?.schedules ?? [],
     loading: loaded?.key !== key && failedKey !== key,
     failed: failedKey !== null && failedKey === key,
     reload,
+    patch,
   };
 }
