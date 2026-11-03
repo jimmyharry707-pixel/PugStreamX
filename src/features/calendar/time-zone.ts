@@ -87,9 +87,21 @@ export function timeZoneOffset(timeZone: string, at: Date, style: "short" | "lon
   return parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT";
 }
 
-/** "Asia/Ho_Chi_Minh" → "Asia/Ho Chi Minh". */
+// Browsers list some zones under their old names; show the current ones.
+const RENAMED: Record<string, string> = {
+  "Asia/Calcutta": "Asia/Kolkata",
+  "Asia/Katmandu": "Asia/Kathmandu",
+  "Asia/Saigon": "Asia/Ho Chi Minh",
+  "Asia/Rangoon": "Asia/Yangon",
+  "Europe/Kiev": "Europe/Kyiv",
+  "Atlantic/Faeroe": "Atlantic/Faroe",
+  "America/Godthab": "America/Nuuk",
+  "Pacific/Enderbury": "Pacific/Kanton",
+};
+
+/** Readable zone name: "Asia/Ho_Chi_Minh" → "Asia/Ho Chi Minh", "Asia/Calcutta" → "Asia/Kolkata". */
 export function timeZoneName(timeZone: string): string {
-  return timeZone.replaceAll("_", " ");
+  return RENAMED[timeZone] ?? timeZone.replaceAll("_", " ");
 }
 
 function offsetMinutes(longOffset: string): number {
@@ -97,15 +109,28 @@ function offsetMinutes(longOffset: string): number {
   return match ? (match[1] === "-" ? -1 : 1) * (Number(match[2]) * 60 + Number(match[3])) : 0;
 }
 
-/** Every time zone the browser knows, labelled "(GMT+08:00) Asia/Shanghai" and sorted by offset. */
-export function timeZoneOptions(at: Date): { value: string; label: string }[] {
+export type TimeZoneOption = {
+  value: string;
+  /** "Asia/Shanghai" */
+  name: string;
+  /** "GMT+08:00" */
+  offset: string;
+  /** Lowercase text a search matches: names (old and new), "gmt+08:00", "+8", "utc+8". */
+  search: string;
+};
+
+/** Every time zone the browser knows, sorted by UTC offset, then name. */
+export function timeZoneOptions(at: Date): TimeZoneOption[] {
   const zones = Intl.supportedValuesOf("timeZone");
   if (!zones.includes("UTC")) zones.push("UTC");
   return zones
     .map((zone) => {
       const offset = timeZoneOffset(zone, at, "long");
-      return { value: zone, label: `(${offset}) ${timeZoneName(zone)}`, sort: offsetMinutes(offset) };
+      const short = timeZoneOffset(zone, at, "short").replace("GMT", "");
+      const name = timeZoneName(zone);
+      const search = [name, zone.replaceAll("_", " "), offset, short, `utc${short}`].join(" ").toLowerCase();
+      return { value: zone, name, offset, search, sort: offsetMinutes(offset) };
     })
-    .sort((a, b) => a.sort - b.sort || a.value.localeCompare(b.value))
-    .map(({ value, label }) => ({ value, label }));
+    .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name))
+    .map(({ value, name, offset, search }) => ({ value, name, offset, search }));
 }

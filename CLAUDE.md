@@ -72,10 +72,10 @@ src/
 - `/calendar` (`CALENDAR_PATH`) is a Google-Calendar-style **week-only** `PsCalendar`: a 24-hour grid for 7 days using the full width. The week title in its toolbar (`PsCalendarDatePicker`) opens a month calendar popup (`PsMiniCalendar`) for jumping to a week. It has no events yet. There are no Day or Month views.
 - The shown week lives in the URL (`?date=YYYY-MM-DD`, any day of that week). With no date it shows this week. Moving around uses `window.history.pushState`, so it makes no server request.
 - "Today" is only known in the browser: `useNow()` and `useTimeZoneSetting()` are null on the server, and the calendar shows a skeleton until they're ready.
-- **Time zone:** `PsTimeZoneSelect` sits at the right of the calendar toolbar.
+- **Time zone:** `PsTimeZoneSelect` sits at the right of the calendar toolbar. It's our own dark popup with a search box, not a native `<select>`: Windows draws native dropdown lists white, and their type-to-jump can't search 400+ labels that all start with "GMT".
   - The choice is kept in this browser's localStorage (`ps_time_zone`); `""` means the device's zone.
   - "Today" and the now-line come from `zonedTime(now, zone)` (`time-zone.ts`), never from `Date#getHours()` or `getDate()`.
-  - The list comes from `Intl.supportedValuesOf("timeZone")`, which uses canonical names, e.g. `Asia/Calcutta` rather than `Asia/Kolkata`.
+  - The list comes from `Intl.supportedValuesOf("timeZone")`, which uses old canonical names (e.g. `Asia/Calcutta`). The stored value keeps that name, but `timeZoneName()` shows the current one ("Asia/Kolkata"), and search matches both.
 - Date maths goes through the pure helpers in `dates.ts`, which work on local days and `"YYYY-MM-DD"` keys. The week starts on `WEEK_STARTS_ON` (Monday). Weekends (`isWeekend`) are shown in rose: tinted columns in the week, rose dates in the popup.
 - Keyboard shortcuts as in Google Calendar: T (this week), J / N (next week), K / P (previous week).
 
