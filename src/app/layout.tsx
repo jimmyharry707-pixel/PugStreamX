@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { PsConfirmRoot } from "@/features/confirm/components/ps-confirm-root";
-import { PsSnackbarViewport } from "@/features/snackbar/components/ps-snackbar-viewport";
+import { PsConfirmRoot } from "@/features/shared/confirm/components/ps-confirm-root";
+import { PsSnackbarViewport } from "@/features/shared/snackbar/components/ps-snackbar-viewport";
 import "./globals.css";
 
 const geistSans = Geist({

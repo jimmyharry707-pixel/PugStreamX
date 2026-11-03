@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { PsAuthCard } from "@/features/auth/components/ps-auth-card";
-import { PsRedirectIfSignedIn } from "@/features/auth/components/ps-redirect-if-signed-in";
-import { PsSignInForm } from "@/features/auth/components/ps-sign-in-form";
+import { PsAuthCard } from "@/features/account/auth/components/ps-auth-card";
+import { PsRedirectIfSignedIn } from "@/features/account/auth/components/ps-redirect-if-signed-in";
+import { PsSignInForm } from "@/features/account/auth/components/ps-sign-in-form";
 
 export const metadata: Metadata = { title: "Sign in" };
 

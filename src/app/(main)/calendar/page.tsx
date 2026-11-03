@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { PsLinkButton } from "@/components/ui/ps-button";
 import { PsEmptyState } from "@/components/ui/ps-empty-state";
-import { ADMIN_GROUPS_PATH } from "@/features/admin/constants";
-import { requireCompleteProfile } from "@/features/auth/dal";
-import { PsCalendar } from "@/features/calendar/components/ps-calendar";
-import { listGroups } from "@/features/groups/queries";
-import { calendarAccess } from "@/features/schedules/access";
+import { ADMIN_GROUPS_PATH } from "@/features/organization/admin/constants";
+import { requireCompleteProfile } from "@/features/account/auth/dal";
+import { PsCalendar } from "@/features/scheduling/calendar/components/ps-calendar";
+import { listGroups } from "@/features/organization/groups/queries";
+import { calendarAccess } from "@/features/scheduling/schedules/access";
 
 export const metadata: Metadata = { title: "Schedule" };
 

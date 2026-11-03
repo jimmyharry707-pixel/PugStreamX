@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CALENDAR_PATH } from "@/features/calendar/constants";
+import { CALENDAR_PATH } from "@/features/scheduling/calendar/constants";
 import { cn } from "@/lib/utils/cn";
 import { PsBrand } from "./ps-brand";
 import { PsSidebarLink } from "./ps-sidebar-link";

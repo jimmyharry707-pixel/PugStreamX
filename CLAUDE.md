@@ -21,7 +21,7 @@ before starting work, and add a new summary when the user asks to save the chat 
     - Without `stack`, a wide table scrolls inside its card, never the page.
     - Its CSS (`ps-table.css`) is in the `components` layer, so utilities passed as `className` (e.g. `max-sm:pl-4`) still win.
   - Dialogs: `PsDialog` is the shared shell (title, ×/Esc/click-outside close, focus trap; a bottom sheet on phones). `PsModal` is a `PsDialog` driven by the URL: render it when a search param is set (e.g. `?user=<id>`), and closing it navigates to `closeHref`. Dialogs cover snackbars, so show the results of actions inside them inline (`PsAlert`), not as snackbars.
-  - **Confirmations use the global confirm popup, never `window.confirm`.** `<PsConfirmRoot />` is mounted once in the root layout (don't mount it again). From client code: `import { confirm } from "@/features/confirm/store"`, then `if (await confirm({ title, message, confirmLabel, tone: "danger" })) { ... }`. Use `tone: "danger"` for deletes and anything that can't be undone; the dialog then starts focused on Cancel.
+  - **Confirmations use the global confirm popup, never `window.confirm`.** `<PsConfirmRoot />` is mounted once in the root layout (don't mount it again). From client code: `import { confirm } from "@/features/shared/confirm/store"`, then `if (await confirm({ title, message, confirmLabel, tone: "danger" })) { ... }`. Use `tone: "danger"` for deletes and anything that can't be undone; the dialog then starts focused on Cancel.
   - Form controls go inside `PsField` (label + error + hint), which passes `id` and `aria-*` props to the control: `<PsField id="x" label="X" errors={e}>{(p) => <PsTextarea name="x" {...p} />}</PsField>`. `PsFormField` is the shortcut for plain inputs.
   - `src/components/layout/`: app frame pieces:
     - `PsAppShell`: the main-site frame (left panel, topbar, main container; the panel becomes a drawer below the `lg` breakpoint).
@@ -31,7 +31,7 @@ before starting work, and add a new summary when the user asks to save the chat 
     - `PsBrand`: the logo. `PsContainer`: a max-width wrapper.
     - `PsAnimatedBackground`: the moving work-themed background behind the auth pages, used in `src/app/(auth)/layout.tsx`.
   - Layering (z-index): confirm popup `z-[130]` > dialogs and the mobile drawer `z-[120]` > topbar and its menus `z-[110]` > snackbars `z-[100]` > page content. Anything the user opens must sit above snackbars.
-  - `src/features/<feature>/components/`: components tied to one feature.
+  - `src/features/<category>/<feature>/components/`: components tied to one feature.
 - Build pages from existing `ps-` components before writing raw markup. If a pattern repeats, make it a new `ps-` component.
 - Next.js special files (`page.tsx`, `layout.tsx`, `not-found.tsx`, `route.ts`, `proxy.ts`, …) keep their required names.
 
@@ -51,7 +51,7 @@ src/
   proxy.ts              optimistic auth redirect (cookie presence only)
   components/ui/        ps-* basic components
   components/layout/    ps-* app shell
-  features/<feature>/
+  features/<category>/<feature>/
     types.ts            document and input types
     queries.ts          reads, server-only (use "use cache" + cacheTag for shared, non-user data)
     mutations.ts        writes, server-only; callers invalidate any affected cache tag
@@ -62,12 +62,21 @@ src/
   lib/utils/            pure helpers (cn, form state helpers)
 ```
 
-- A new domain area (profiles, follows, chat, …) gets its own folder under `src/features/`, using the same file layout.
+- Features are grouped by area into categories under `src/features/`:
+
+  | Category | Features |
+  |---|---|
+  | `account/` | `auth` (sign-in, sessions), `profile` (required profile, avatar), `users` (user documents, roles) |
+  | `scheduling/` | `calendar` (the week grid, dates, time zones), `schedules` (the events on it) |
+  | `organization/` | `groups`, `admin` (the super-admin panel) |
+  | `shared/` | app-wide UI services used everywhere: `confirm` (confirm popup), `snackbar` |
+
+- A new feature (follows, chat, tasks, …) gets its own folder in the category it belongs to (e.g. `src/features/scheduling/tasks/`), using the same file layout. Add a new category only for a new area that fits none of these, and list it in the table.
 - Pages, actions and route handlers never talk to MongoDB directly. They call a feature's `queries.ts` or `mutations.ts`.
 - After a write to cached data, invalidate its tag: `revalidateTag(TAG, "max")` in route handlers, `updateTag(TAG)` in server actions.
-- Import with the `@/` alias, except for relative imports inside the same feature.
+- Import with the `@/` alias (`@/features/account/auth/dal`), except for relative imports inside the same feature. Never reach into another feature with `../`.
 
-### Calendar (`src/features/calendar/`)
+### Calendar (`src/features/scheduling/calendar/`)
 
 - `/calendar` (`CALENDAR_PATH`) is a Google-Calendar-style **week-only** `PsCalendar`: a 24-hour grid for 7 days using the full width. The week title in its toolbar (`PsCalendarDatePicker`) opens a month calendar popup (`PsMiniCalendar`) for jumping to a week. It has no events yet. There are no Day or Month views.
 - The shown week lives in the URL (`?date=YYYY-MM-DD`, any day of that week). With no date it shows this week. Moving around uses `window.history.pushState`, so it makes no server request.
@@ -80,7 +89,7 @@ src/
 - Keyboard shortcuts as in Google Calendar: T (this week), J / N (next week), K / P (previous week), C (create a schedule).
 - Shared time zone maths lives in `src/lib/utils/time-zone.ts`, safe on the server and in the browser: `zonedTime`, `zonedParts`, `zonedToUtc` (wall time in a zone → exact moment) and `isValidTimeZone`.
 
-### Schedules (`src/features/schedules/`)
+### Schedules (`src/features/scheduling/schedules/`)
 
 - These are the events on the calendar (e.g. interviews), stored in `ps_schedules`.
 - **Each schedule belongs to a group** (`groupId`; `userId` is its creator). The group's members share one calendar. Every query and mutation filters by `groupId`, and no user or group ids are sent to the browser (`toSchedule()`).
@@ -138,7 +147,7 @@ src/
 - **Writes** (managers only): `saveSchedule` creates, or updates when the form has a `scheduleId`. `removeSchedule` deletes (after the confirm popup) and `reschedule` saves drags. Callers use `saveCallerFields` (`PsCallerForm` in the details). The calendar then calls `reload()`.
 - **UI:** Create (managers only) is a toolbar button on `sm`+ and a floating button on phones. Clicking a block opens `PsScheduleDetails`, which shows every field to everyone; managers also get Edit and Delete, and Callers get the caller form.
 
-### Groups (`src/features/groups/`)
+### Groups (`src/features/organization/groups/`)
 
 - Groups live in `ps_groups` (`name`, unique ignoring case via `nameKey`). Each user has one group (`UserDoc.groupId`, or null; `PublicUser.groupId`), and a group's members share its calendar.
 - Super-admins manage groups at `/admin/groups` (`PsGroupManager`): New group and Rename open a `PsDialog` popup (`PsGroupForm`), and Delete asks first. Only empty groups (no members, no schedules) can be deleted.
@@ -150,39 +159,39 @@ src/
     - The grid reports an `EventChange` (days and minutes). `PsCalendar` turns it into exact times in the calendar's zone (moves keep wall-clock time, so daylight saving can't shift them) and shows the change at once (`patch()`).
     - It then saves with the `reschedule` action (`rescheduleSchema`: owner only, end after start, at most 24 h). If saving fails, `reload()` puts the block back.
     - The schedule keeps its own `timeZone`. Touch doesn't drag blocks; it scrolls.
-- Blocks use the `event` color role. Overlapping blocks share the column width (`layoutEvents` in `features/calendar/event-layout.ts`).
+- Blocks use the `event` color role. Overlapping blocks share the column width (`layoutEvents` in `features/scheduling/calendar/event-layout.ts`).
 - To add a schedule field: add it to `SCHEDULE_FIELDS`, `scheduleSchema`, `ScheduleDoc` / `ScheduleInput` / `toSchedule`, `PsScheduleForm`, `PsScheduleDetails`, and `editDefaults` in `ps-calendar.tsx`.
 
 ## 4. Authentication
 
 - Custom email + password auth. Users live in `ps_users`; sessions live in `ps_sessions`, stored as SHA-256 hashes of the random token in the `ps_session` cookie.
-- `src/proxy.ts` only checks that the cookie exists. The real check is `getCurrentUser()` / `requireUser()` in `src/features/auth/dal.ts`. Every protected page, action and route handler must call one of these.
+- `src/proxy.ts` only checks that the cookie exists. The real check is `getCurrentUser()` / `requireUser()` in `src/features/account/auth/dal.ts`. Every protected page, action and route handler must call one of these.
 - Pages that read the session must do it inside `<Suspense>` (Cache Components).
 - Never send `UserDoc` to the client. Use `toPublicUser()`.
-- To add a sign-up field: add it to `signUpFields` (`features/auth/validation.ts`), `ps-sign-up-form.tsx`, `UserDoc` (`features/users/types.ts`) and `CreateUserInput`. The `signUp` action stores every validated field except `password`.
+- To add a sign-up field: add it to `signUpFields` (`features/account/auth/validation.ts`), `ps-sign-up-form.tsx`, `UserDoc` (`features/account/users/types.ts`) and `CreateUserInput`. The `signUp` action stores every validated field except `password`.
 - Check-only fields that must not be stored (like `confirmPassword`) are validated in `signUpFields`, then left out of `storedFields`, which strips them before the action sees the data.
-- Public routes are listed in `PUBLIC_ROUTES` (`features/auth/constants.ts`). Everything else requires sign-in.
+- Public routes are listed in `PUBLIC_ROUTES` (`features/account/auth/constants.ts`). Everything else requires sign-in.
 
 ### Roles and account activation
 
-- `UserDoc.role` is a number from `ROLES` in `src/features/users/roles.ts`, starting at 0. **0 is the founder (super-admin), 1 is Profile Manager (makes and manages their group's schedules), 2 is Caller (sees their group's calendar, fills in the screen share link when required and "Note (Caller)").** See the Schedules section for exactly what each can do. New accounts get `role: null` ("No role") until one is given. To add a role, add it to `ROLES` with the next number and give it a label in `ROLE_LABELS`.
+- `UserDoc.role` is a number from `ROLES` in `src/features/account/users/roles.ts`, starting at 0. **0 is the founder (super-admin), 1 is Profile Manager (makes and manages their group's schedules), 2 is Caller (sees their group's calendar, fills in the screen share link when required and "Note (Caller)").** See the Schedules section for exactly what each can do. New accounts get `role: null` ("No role") until one is given. To add a role, add it to `ROLES` with the next number and give it a label in `ROLE_LABELS`.
 - Check permissions with the helpers in `roles.ts` (`isSuperAdmin`, `isProfileManager`, `isCaller`), `PublicUser.isSuperAdmin` or `calendarAccess()`, never by comparing raw numbers in pages.
-- New accounts start with `active: false`. Sign-up then creates no session and sends the user to `/signin`, and sign-in is refused (only after the password matched) until a super-admin activates the account. Documents without `active` count as inactive (`isActive()` in `features/users/queries.ts`).
+- New accounts start with `active: false`. Sign-up then creates no session and sends the user to `/signin`, and sign-in is refused (only after the password matched) until a super-admin activates the account. Documents without `active` count as inactive (`isActive()` in `features/account/users/queries.ts`).
 - `getCurrentUser()` returns null for inactive accounts, and deactivating an account deletes all its sessions, so access ends immediately.
 - If no founder exists, `ensureFounder()` (run on sign-up and sign-in) makes the **oldest** account the founder and activates it. On a new database, the first sign-up becomes the founder.
-- Admin pages live under `/admin` (`src/features/admin/`). Only super-admins see the left-panel **Admin** button, which opens a popup menu. Its links are `ADMIN_NAV_ITEMS` (`features/admin/constants.ts`), so add new admin pages there. `/admin` itself redirects to the first one.
+- Admin pages live under `/admin` (`src/features/organization/admin/`). Only super-admins see the left-panel **Admin** button, which opens a popup menu. Its links are `ADMIN_NAV_ITEMS` (`features/organization/admin/constants.ts`), so add new admin pages there. `/admin` itself redirects to the first one.
 - `/admin/users` lists every account with Activate / Deactivate buttons. Clicking a row opens the full profile in a `PsModal` (`?user=<id>`), where the role and group can be changed and the account deleted (after the confirm popup). Deleting removes the user, their sessions and avatar file. Founders can't be deleted (change their role first). Super-admins can't change their own role, deactivate or delete themselves, so one always remains.
-- Admin pages, actions and route handlers must call `requireSuperAdmin()` (`features/auth/dal.ts`), which returns a 404 for everyone else. Super-admin accounts can't be deactivated from there.
+- Admin pages, actions and route handlers must call `requireSuperAdmin()` (`features/account/auth/dal.ts`), which returns a 404 for everyone else. Super-admin accounts can't be deactivated from there.
 
-### Required profile (`src/features/profile/`)
+### Required profile (`src/features/account/profile/`)
 
 - After their first sign-in (and on every sign-in until done) users must complete their profile at `/complete-profile`: avatar, full name, display name (unique, case-insensitive), birthday, address, phone (with country). All required. It's stored as `UserDoc.profile`; `PublicUser.profileComplete` says whether it's done.
 - **The main site lives in the `src/app/(main)/` route group.** Its layout renders `PsAppShell`. The left panel and topbar are static; the topbar profile badge (`PsCurrentUserMenu`) and the page content (`PsProfileGate`) wait for the session and redirect incomplete or signed-out users.
 - The topbar profile badge opens a menu with **Update profile** (`/profile`, `PROFILE_PATH`) and **Sign out**. `/profile` reuses `PsProfileForm` with `mode="update"`. The photo is optional there, and a replaced photo is deleted only after the new one is saved.
-- Avatars are served by `/api/avatars/[id]`, only to signed-in members with a complete profile. Build URLs with `avatarUrl(id)` (`features/profile/constants.ts`); `PublicUser.profile.avatarUrl` already has one. Render them with `PsAvatar src={...}`, which uses a plain `<img>` because Next's image optimizer can't fetch auth-protected URLs.
-- **Every main-site page, server action and route handler must also call `requireCompleteProfile()`** (`features/auth/dal.ts`) itself. Layouts don't re-run on client-side navigation, so the layout gate alone isn't a security boundary.
+- Avatars are served by `/api/avatars/[id]`, only to signed-in members with a complete profile. Build URLs with `avatarUrl(id)` (`features/account/profile/constants.ts`); `PublicUser.profile.avatarUrl` already has one. Render them with `PsAvatar src={...}`, which uses a plain `<img>` because Next's image optimizer can't fetch auth-protected URLs.
+- **Every main-site page, server action and route handler must also call `requireCompleteProfile()`** (`features/account/auth/dal.ts`) itself. Layouts don't re-run on client-side navigation, so the layout gate alone isn't a security boundary.
 - Pages outside `(main)` that signed-in users with incomplete profiles may use (like `/complete-profile`) go in `src/app/(auth)/`.
-- To add a profile field: add it to `profileSchema` (`validation.ts`), `PROFILE_FIELDS` (`constants.ts`), `UserProfile` (`features/users/types.ts`), and an input in `ps-profile-form.tsx`.
+- To add a profile field: add it to `profileSchema` (`validation.ts`), `PROFILE_FIELDS` (`constants.ts`), `UserProfile` (`features/account/users/types.ts`), and an input in `ps-profile-form.tsx`.
 - Phone numbers are validated server-side with `libphonenumber-js/max` and stored as `{ number: E.164, country: ISO code }`. Birthdays are stored as `"YYYY-MM-DD"` text so time zones can't shift them.
 
 ## 5. CSS lives in `src/static/css/`, one file per unit
@@ -224,14 +233,14 @@ src/
 - Never write hex / `rgb()` / `oklch()` values outside `color.css`. To restyle the site, change the values there.
 - A new kind of color gets a new role in `color.css` (`--color-<role>-<shade>`, with a comment saying what it's for), not a one-off value.
 
-## 6. Snackbars (`src/features/snackbar/`)
+## 6. Snackbars (`src/features/shared/snackbar/`)
 
 - Shown at the top right, just below the topbar (80px from the top), for 5 s (paused while hovered or focused), max 5 at once (the oldest is dropped). Types: `default`, `success`, `info`, `warning`, `error`.
 - `<PsSnackbarViewport />` is mounted once in the root layout. Don't mount it again.
-- **Client code:** `import { snackbar } from "@/features/snackbar/store"`, then `snackbar.success("Saved")`, `snackbar.error(msg, { title, duration })`, `snackbar.dismiss(id)`.
-- **Server actions and route handlers:** `await flashSnackbar({ type, message })` from `@/features/snackbar/flash`, usually right before `redirect()`. A short-lived `ps_flash` cookie carries it to the next page.
+- **Client code:** `import { snackbar } from "@/features/shared/snackbar/store"`, then `snackbar.success("Saved")`, `snackbar.error(msg, { title, duration })`, `snackbar.dismiss(id)`.
+- **Server actions and route handlers:** `await flashSnackbar({ type, message })` from `@/features/shared/snackbar/flash`, usually right before `redirect()`. A short-lived `ps_flash` cookie carries it to the next page.
 - Never call `snackbar.*` on the server. Its state is module-level and would leak between users.
-- Defaults (duration, max) live in `src/features/snackbar/constants.ts`.
+- Defaults (duration, max) live in `src/features/shared/snackbar/constants.ts`.
 
 ## 7. Finish every task with a commit message suggestion
 

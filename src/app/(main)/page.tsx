@@ -1,4 +1,4 @@
-import { requireCompleteProfile } from "@/features/auth/dal";
+import { requireCompleteProfile } from "@/features/account/auth/dal";
 
 export default async function HomePage() {
   await requireCompleteProfile();

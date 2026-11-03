@@ -2,12 +2,12 @@ import { ObjectId } from "mongodb";
 import type { Metadata } from "next";
 import { PsChip } from "@/components/ui/ps-chip";
 import { PsModal } from "@/components/ui/ps-modal";
-import { PsUserProfile } from "@/features/admin/components/ps-user-profile";
-import { PsUserTable } from "@/features/admin/components/ps-user-table";
-import { ADMIN_USERS_PATH, USER_PARAM, USER_STATUS_FILTERS, type UserStatusFilter } from "@/features/admin/constants";
-import { requireSuperAdmin } from "@/features/auth/dal";
-import { listGroups } from "@/features/groups/queries";
-import { getUserDetails, listUsers } from "@/features/users/queries";
+import { PsUserProfile } from "@/features/organization/admin/components/ps-user-profile";
+import { PsUserTable } from "@/features/organization/admin/components/ps-user-table";
+import { ADMIN_USERS_PATH, USER_PARAM, USER_STATUS_FILTERS, type UserStatusFilter } from "@/features/organization/admin/constants";
+import { requireSuperAdmin } from "@/features/account/auth/dal";
+import { listGroups } from "@/features/organization/groups/queries";
+import { getUserDetails, listUsers } from "@/features/account/users/queries";
 
 export const metadata: Metadata = { title: "Users · Admin" };
 

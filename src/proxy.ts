@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { PUBLIC_ROUTES, SESSION_COOKIE, SIGN_IN_PATH } from "@/features/auth/constants";
+import { PUBLIC_ROUTES, SESSION_COOKIE, SIGN_IN_PATH } from "@/features/account/auth/constants";
 
 // Optimistic check only: sends visitors without a session cookie to the sign-in page.
-// The real session check happens in src/features/auth/dal.ts (requireUser / getCurrentUser).
+// The real session check happens in src/features/account/auth/dal.ts (requireUser / getCurrentUser).
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (PUBLIC_ROUTES.includes(pathname) || request.cookies.has(SESSION_COOKIE)) {

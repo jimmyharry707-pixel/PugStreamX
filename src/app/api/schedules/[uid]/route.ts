@@ -1,8 +1,8 @@
-import { getCurrentUser } from "@/features/auth/dal";
-import { GROUP_PARAM } from "@/features/groups/constants";
-import { calendarAccess } from "@/features/schedules/access";
-import { SCHEDULE_UID_PATTERN } from "@/features/schedules/constants";
-import { findScheduleByUid } from "@/features/schedules/queries";
+import { getCurrentUser } from "@/features/account/auth/dal";
+import { GROUP_PARAM } from "@/features/organization/groups/constants";
+import { calendarAccess } from "@/features/scheduling/schedules/access";
+import { SCHEDULE_UID_PATTERN } from "@/features/scheduling/schedules/constants";
+import { findScheduleByUid } from "@/features/scheduling/schedules/queries";
 
 // GET /api/schedules/:uid[?group=<id>]: one schedule by its ID from the viewer's group calendar
 // (e.g. to open a linked schedule from another week). Other groups' schedules are a 404.

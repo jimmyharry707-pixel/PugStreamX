@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { requireSuperAdmin } from "@/features/auth/dal";
-import { PsGroupManager } from "@/features/groups/components/ps-group-manager";
-import { listGroupsWithCounts } from "@/features/groups/queries";
+import { requireSuperAdmin } from "@/features/account/auth/dal";
+import { PsGroupManager } from "@/features/organization/groups/components/ps-group-manager";
+import { listGroupsWithCounts } from "@/features/organization/groups/queries";
 
 export const metadata: Metadata = { title: "Groups · Admin" };
 

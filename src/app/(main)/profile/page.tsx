@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { requireCompleteProfile } from "@/features/auth/dal";
-import { PsProfileForm } from "@/features/profile/components/ps-profile-form";
-import { COMPLETE_PROFILE_PATH } from "@/features/profile/constants";
-import { getProfileForEditing } from "@/features/profile/queries";
+import { requireCompleteProfile } from "@/features/account/auth/dal";
+import { PsProfileForm } from "@/features/account/profile/components/ps-profile-form";
+import { COMPLETE_PROFILE_PATH } from "@/features/account/profile/constants";
+import { getProfileForEditing } from "@/features/account/profile/queries";
 
 export const metadata: Metadata = { title: "Update profile" };
 

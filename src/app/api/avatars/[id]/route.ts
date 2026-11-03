@@ -1,7 +1,7 @@
 import { ObjectId } from "mongodb";
 import { Readable } from "node:stream";
-import { getCurrentUser } from "@/features/auth/dal";
-import { openAvatar } from "@/features/profile/avatar";
+import { getCurrentUser } from "@/features/account/auth/dal";
+import { openAvatar } from "@/features/account/profile/avatar";
 
 // GET /api/avatars/:id: avatar images, for signed-in members with a completed profile only.
 // A new upload always gets a new id, so responses can be cached for a long time.

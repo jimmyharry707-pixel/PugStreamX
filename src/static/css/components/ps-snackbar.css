@@ -1,4 +1,4 @@
-/* PsSnackbar (src/features/snackbar/components/ps-snackbar.tsx) */
+/* PsSnackbar (src/features/shared/snackbar/components/ps-snackbar.tsx) */
 
 .ps-snackbar {
   animation: ps-snackbar-in 200ms ease-out;

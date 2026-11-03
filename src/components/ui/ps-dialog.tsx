@@ -9,7 +9,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), select:not([disabled]), inpu
 /**
  * Centered dialog (a bottom sheet on phones) shown while it's rendered. Closes with ×, Esc or
  * a click outside, by calling `onClose`. Focus stays inside while open and returns afterwards.
- * Use PsModal for dialogs driven by the URL and `confirm()` (features/confirm) for confirmations.
+ * Use PsModal for dialogs driven by the URL and `confirm()` (features/shared/confirm) for confirmations.
  */
 export function PsDialog({
   title,

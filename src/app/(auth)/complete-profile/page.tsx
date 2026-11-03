@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { PsAuthCard } from "@/features/auth/components/ps-auth-card";
-import { PsSignOutButton } from "@/features/auth/components/ps-sign-out-button";
-import { PsCompleteProfileGuard } from "@/features/profile/components/ps-complete-profile-guard";
-import { PsProfileForm } from "@/features/profile/components/ps-profile-form";
+import { PsAuthCard } from "@/features/account/auth/components/ps-auth-card";
+import { PsSignOutButton } from "@/features/account/auth/components/ps-sign-out-button";
+import { PsCompleteProfileGuard } from "@/features/account/profile/components/ps-complete-profile-guard";
+import { PsProfileForm } from "@/features/account/profile/components/ps-profile-form";
 
 export const metadata: Metadata = { title: "Complete your profile" };
 
