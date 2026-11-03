@@ -1,0 +1,75 @@
+/* PsCalendarTimeGrid (ps-calendar-time-grid.tsx): the Week and Day views. */
+@layer components {
+  .ps-calendar-time-grid {
+    --ps-calendar-hour: 3rem;
+  }
+
+  /* The head reserves the same scrollbar space as the body, so their columns line up. */
+  .ps-calendar-time-grid__head {
+    overflow-y: hidden;
+    scrollbar-gutter: stable;
+  }
+
+  .ps-calendar-time-grid__body {
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+
+  .ps-calendar-time-grid__gutter {
+    width: 3.25rem;
+  }
+
+  @media (min-width: 640px) {
+    .ps-calendar-time-grid__gutter {
+      width: 4rem;
+    }
+  }
+
+  .ps-calendar-time-grid__hour {
+    position: relative;
+    height: var(--ps-calendar-hour);
+  }
+
+  /* Sits on the hour line, like Google Calendar. */
+  .ps-calendar-time-grid__hour-label {
+    position: absolute;
+    top: -0.5rem;
+    right: 0.5rem;
+    font-size: 10px;
+    line-height: 1rem;
+    white-space: nowrap;
+    color: var(--color-zinc-500);
+  }
+
+  /* One line per hour, drawn as a background so each day stays a single element. */
+  .ps-calendar-time-grid__column {
+    position: relative;
+    min-width: 0;
+    height: calc(var(--ps-calendar-hour) * 24);
+    border-left: 1px solid rgb(255 255 255 / 0.06);
+    background-image: linear-gradient(to bottom, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+    background-size: 100% var(--ps-calendar-hour);
+  }
+
+  /* Current time. --ps-calendar-now is the share of the day gone (0 to 1). */
+  .ps-calendar-time-grid__now {
+    position: absolute;
+    inset-inline: 0;
+    top: calc(var(--ps-calendar-now) * 100%);
+    z-index: 1;
+    height: 2px;
+    background: var(--color-red-500);
+    pointer-events: none;
+  }
+
+  .ps-calendar-time-grid__now::before {
+    content: "";
+    position: absolute;
+    left: -6px;
+    top: -5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 9999px;
+    background: var(--color-red-500);
+  }
+}

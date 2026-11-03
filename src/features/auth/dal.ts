@@ -1,10 +1,11 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { cache } from "react";
+import { COMPLETE_PROFILE_PATH } from "@/features/profile/constants";
 import { getCollection } from "@/lib/db/client";
-import { findUserById, toPublicUser } from "@/features/users/queries";
+import { findUserById, isActive, toPublicUser } from "@/features/users/queries";
 import type { PublicUser } from "@/features/users/types";
 import { SESSION_COOKIE, SIGN_IN_PATH } from "./constants";
 import { hashToken, type SessionDoc } from "./session";
@@ -25,12 +26,33 @@ export const getCurrentUser = cache(async (): Promise<PublicUser | null> => {
   if (!session) return null;
 
   const user = await findUserById(session.userId);
-  return user ? toPublicUser(user) : null;
+  // Inactive accounts have no access, even if a session is left over.
+  return user && isActive(user) ? toPublicUser(user) : null;
 });
 
 /** The signed-in user. Redirects to the sign-in page if there isn't one. */
 export async function requireUser(): Promise<PublicUser> {
   const user = await getCurrentUser();
   if (!user) redirect(SIGN_IN_PATH);
+  return user;
+}
+
+/**
+ * The signed-in user with a completed profile. Redirects to sign-in, or to /complete-profile
+ * if the profile isn't done. Every main-site page, action and route handler must call this.
+ */
+export async function requireCompleteProfile(): Promise<PublicUser> {
+  const user = await requireUser();
+  if (!user.profileComplete) redirect(COMPLETE_PROFILE_PATH);
+  return user;
+}
+
+/**
+ * A signed-in super-admin (role 0) with a completed profile. Everyone else gets a 404, so admin
+ * pages don't reveal that they exist. Every admin page, action and route handler must call this.
+ */
+export async function requireSuperAdmin(): Promise<PublicUser> {
+  const user = await requireCompleteProfile();
+  if (!user.isSuperAdmin) notFound();
   return user;
 }

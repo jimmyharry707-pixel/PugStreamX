@@ -1,6 +1,6 @@
 import "server-only";
-import { MongoClient, type Db, type Document } from "mongodb";
-import { COLLECTIONS, DB_NAME, INDEXES, type CollectionKey } from "./config";
+import { GridFSBucket, MongoClient, type Db, type Document } from "mongodb";
+import { BUCKETS, COLLECTIONS, DB_NAME, INDEXES, type BucketKey, type CollectionKey } from "./config";
 
 // Reuse one connection across hot reloads in dev and across requests in prod.
 const globalForMongo = globalThis as typeof globalThis & {
@@ -35,4 +35,10 @@ export function getDb(): Promise<Db> {
 export async function getCollection<T extends Document>(key: CollectionKey) {
   const db = await getDb();
   return db.collection<T>(COLLECTIONS[key]);
+}
+
+/** A registered GridFS bucket for storing files, e.g. `getBucket("avatars")`. */
+export async function getBucket(key: BucketKey) {
+  const db = await getDb();
+  return new GridFSBucket(db, { bucketName: BUCKETS[key] });
 }

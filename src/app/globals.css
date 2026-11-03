@@ -1,19 +1,5 @@
+/* Entry stylesheet: Tailwind plus shared base styles only.
+   Component styles live in src/static/css/components/ and are imported by their component. */
 @import "tailwindcss";
-
-:root {
-  --background: #09090b;
-  --foreground: #f4f4f5;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-}
+@import "../static/css/base/theme.css";
+@import "../static/css/base/base.css";

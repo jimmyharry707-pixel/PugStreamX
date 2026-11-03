@@ -1,0 +1,38 @@
+/* PsSnackbar (src/features/snackbar/components/ps-snackbar.tsx) */
+
+.ps-snackbar {
+  animation: ps-snackbar-in 200ms ease-out;
+}
+
+/* Countdown bar. Duration comes from --ps-snackbar-duration, set inline per snackbar. */
+.ps-snackbar__progress {
+  transform-origin: left;
+  animation: ps-snackbar-progress var(--ps-snackbar-duration, 5000ms) linear forwards;
+}
+
+/* Hover/focus pauses the countdown; keep the bar in sync. */
+.ps-snackbar[data-paused] .ps-snackbar__progress {
+  animation-play-state: paused;
+}
+
+@keyframes ps-snackbar-in {
+  from {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+}
+
+@keyframes ps-snackbar-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-snackbar {
+    animation: none;
+  }
+}

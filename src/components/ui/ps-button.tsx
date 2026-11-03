@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils/cn";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 type StyleProps = { variant?: Variant; size?: Size };
 
@@ -10,6 +10,7 @@ const variants: Record<Variant, string> = {
   primary: "bg-amber-400 font-semibold text-zinc-950 hover:bg-amber-300",
   secondary: "bg-zinc-800 text-zinc-100 hover:bg-zinc-700",
   ghost: "text-zinc-300 hover:text-white",
+  danger: "bg-red-600 font-semibold text-white hover:bg-red-500",
 };
 
 const sizes: Record<Size, string> = {

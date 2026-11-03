@@ -48,3 +48,9 @@ export async function deleteSession() {
   }
   cookieStore.delete(SESSION_COOKIE);
 }
+
+/** Signs the user out everywhere, e.g. when their account is deactivated. */
+export async function deleteUserSessions(userId: ObjectId) {
+  const sessions = await getCollection<SessionDoc>("sessions");
+  await sessions.deleteMany({ userId });
+}

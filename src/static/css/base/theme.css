@@ -1,0 +1,14 @@
+/* Design tokens. Imported by src/app/globals.css after Tailwind, so @theme values become utilities
+   (e.g. bg-background, text-foreground, font-sans). */
+
+:root {
+  --background: #09090b;
+  --foreground: #f4f4f5;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}

@@ -4,13 +4,33 @@
 
 These rules are mandatory for all work in this repo.
 
+Past session summaries (decisions, gotchas, open items) are in `log/chat_history/`. Read the newest one
+before starting work, and add a new summary when the user asks to save the chat history.
+
 ## 1. Components use the `ps-` prefix
 
 - Every React component file is named `ps-<name>.tsx` in kebab-case, e.g. `ps-button.tsx`, `ps-sign-in-form.tsx`.
 - Each exports a named component `Ps<Name>` in PascalCase, e.g. `PsButton`, `PsSignInForm`. No default exports.
 - Where components live:
-  - `src/components/ui/`: basic reusable building blocks (`PsButton`, `PsInput`, `PsFormField`, `PsAlert`, `PsBadge`, `PsAvatar`, `PsChip`, `PsSection`, `PsEmptyState`). They have no data fetching and no feature knowledge.
-  - `src/components/layout/`: app shell (`PsContainer`).
+  - `src/components/ui/`: basic reusable building blocks (`PsButton`, `PsIconButton`, `PsInput`, `PsPasswordInput`, `PsTextarea`, `PsPhoneInput`, `PsField`, `PsFormField`, `PsAlert`, `PsBadge`, `PsAvatar`, `PsChip`, `PsSection`, `PsEmptyState`, `PsSelect`, `PsDialog`, `PsModal`, `PsTable`). They have no data fetching and no feature knowledge.
+  - **Every table uses `PsTable`** (`ps-table.tsx`) and its parts (`PsTableHead`, `PsTableBody`, `PsTableRow`, `PsTableHeaderCell`, `PsTableCell`, `PsTableRowLink`), never a raw `<table>`.
+    - `hideBelow="md"` hides a column on smaller screens; give its header cell the same value.
+    - `grow` makes the main column take the leftover width and truncate long text.
+    - `stack` turns rows into cards on phones; each cell's `stack` prop (`full` / `fill` / `auto` / `hide`) places it.
+    - For clickable rows, use `<PsTableRow interactive>` plus a `PsTableRowLink`, and give cells with their own buttons `aboveRowLink`.
+    - Without `stack`, a wide table scrolls inside its card, never the page.
+    - Its CSS (`ps-table.css`) is in the `components` layer, so utilities passed as `className` (e.g. `max-sm:pl-4`) still win.
+  - Dialogs: `PsDialog` is the shared shell (title, ×/Esc/click-outside close, focus trap; a bottom sheet on phones). `PsModal` is a `PsDialog` driven by the URL: render it when a search param is set (e.g. `?user=<id>`), and closing it navigates to `closeHref`. Dialogs cover snackbars, so show the results of actions inside them inline (`PsAlert`), not as snackbars.
+  - **Confirmations use the global confirm popup, never `window.confirm`.** `<PsConfirmRoot />` is mounted once in the root layout (don't mount it again). From client code: `import { confirm } from "@/features/confirm/store"`, then `if (await confirm({ title, message, confirmLabel, tone: "danger" })) { ... }`. Use `tone: "danger"` for deletes and anything that can't be undone; the dialog then starts focused on Cancel.
+  - Form controls go inside `PsField` (label + error + hint), which passes `id` and `aria-*` props to the control: `<PsField id="x" label="X" errors={e}>{(p) => <PsTextarea name="x" {...p} />}</PsField>`. `PsFormField` is the shortcut for plain inputs.
+  - `src/components/layout/`: app frame pieces:
+    - `PsAppShell`: the main-site frame (left panel, topbar, main container; the panel becomes a drawer below the `lg` breakpoint).
+    - `PsSidebarNav`: left-panel navigation. Its items live in `NAV_ITEMS`; give an item an `href` once its page exists (until then it shows "Soon"). Role-dependent links go in its `adminItem` slot (shown at the bottom, inside `<Suspense>`), e.g. `PsAdminNavItem`.
+    - `PsSidebarMenu`: a left-panel button that opens a popup menu of links above it (e.g. Admin > Users). The button is highlighted while one of its pages is open.
+    - `PsSidebarLink`: one left-panel link, highlighted while its page is open.
+    - `PsBrand`: the logo. `PsContainer`: a max-width wrapper.
+    - `PsAnimatedBackground`: the moving work-themed background behind the auth pages, used in `src/app/(auth)/layout.tsx`.
+  - Layering (z-index): confirm popup `z-[130]` > dialogs and the mobile drawer `z-[120]` > topbar and its menus `z-[110]` > snackbars `z-[100]` > page content. Anything the user opens must sit above snackbars.
   - `src/features/<feature>/components/`: components tied to one feature.
 - Build pages from existing `ps-` components before writing raw markup. If a pattern repeats, make it a new `ps-` component.
 - Next.js special files (`page.tsx`, `layout.tsx`, `not-found.tsx`, `route.ts`, `proxy.ts`, …) keep their required names.
@@ -21,6 +41,7 @@ These rules are mandatory for all work in this repo.
 - Every collection name **must start with `ps_`** (e.g. `ps_users`, `ps_sessions`).
 - Register every collection in `COLLECTIONS` in `src/lib/db/config.ts`. Its type rejects names without `ps_`. Add its indexes to `INDEXES` there too; they're created automatically on first connection.
 - Access collections only through `getCollection<T>("<key>")` from `src/lib/db/client.ts`. Never use a raw string name.
+- Files (images, attachments) go in GridFS buckets registered in `BUCKETS` (also `ps_`-prefixed, e.g. `ps_avatars`, stored as `ps_avatars.files` / `ps_avatars.chunks`). Access them with `getBucket("<key>")`. Validate uploads on the server by their real bytes, never by file name or claimed type.
 
 ## 3. Scalable structure
 
@@ -38,7 +59,7 @@ src/
     actions.ts          server actions ("use server")
     components/         ps-* feature components
   lib/db/               config.ts (names/indexes) and client.ts (connection)
-  lib/utils/            pure helpers (cn)
+  lib/utils/            pure helpers (cn, form state helpers)
 ```
 
 - A new domain area (profiles, follows, chat, …) gets its own folder under `src/features/`, using the same file layout.
@@ -46,16 +67,71 @@ src/
 - After a write to cached data, invalidate its tag: `revalidateTag(TAG, "max")` in route handlers, `updateTag(TAG)` in server actions.
 - Import with the `@/` alias, except for relative imports inside the same feature.
 
+### Calendar (`src/features/calendar/`)
+
+- `/calendar` (`CALENDAR_PATH`) is a Google-Calendar-style `PsCalendar` with Day / Week / Month views and a mini month calendar on `xl` screens. It has no events yet.
+- The view and date live in the URL (`?view=week&date=YYYY-MM-DD`). With no date it shows today. Moving around uses `window.history.pushState`, so it makes no server request.
+- "Today" is only known in the browser (the user's time zone): `useNow()` is null on the server, and the calendar shows a skeleton until it's ready.
+- Date maths goes through the pure helpers in `dates.ts`, which work on local days and `"YYYY-MM-DD"` keys. The week starts on `WEEK_STARTS_ON` (Sunday).
+- Keyboard shortcuts as in Google Calendar: T (today), J / N (next), K / P (previous), D / W / M (switch view).
+
 ## 4. Authentication
 
 - Custom email + password auth. Users live in `ps_users`; sessions live in `ps_sessions`, stored as SHA-256 hashes of the random token in the `ps_session` cookie.
 - `src/proxy.ts` only checks that the cookie exists. The real check is `getCurrentUser()` / `requireUser()` in `src/features/auth/dal.ts`. Every protected page, action and route handler must call one of these.
 - Pages that read the session must do it inside `<Suspense>` (Cache Components).
 - Never send `UserDoc` to the client. Use `toPublicUser()`.
-- To add a sign-up field: update `signUpSchema` (`features/auth/validation.ts`), `ps-sign-up-form.tsx`, `UserDoc` (`features/users/types.ts`) and `CreateUserInput`. The `signUp` action passes non-password fields through.
+- To add a sign-up field: add it to `signUpFields` (`features/auth/validation.ts`), `ps-sign-up-form.tsx`, `UserDoc` (`features/users/types.ts`) and `CreateUserInput`. The `signUp` action stores every validated field except `password`.
+- Check-only fields that must not be stored (like `confirmPassword`) are validated in `signUpFields`, then left out of `storedFields`, which strips them before the action sees the data.
 - Public routes are listed in `PUBLIC_ROUTES` (`features/auth/constants.ts`). Everything else requires sign-in.
 
-## 5. Finish every task with a commit message suggestion
+### Roles and account activation
+
+- `UserDoc.role` is a number from `ROLES` in `src/features/users/roles.ts`, starting at 0. **0 is the founder (super-admin).** New accounts get `role: null` ("No role") until one is given. To add a role, add it to `ROLES` with the next number and give it a label in `ROLE_LABELS`.
+- Check permissions with the helpers in `roles.ts` (`isSuperAdmin(role)`) or `PublicUser.isSuperAdmin`, never by comparing raw numbers in pages.
+- New accounts start with `active: false`. Sign-up then creates no session and sends the user to `/signin`, and sign-in is refused (only after the password matched) until a super-admin activates the account. Documents without `active` count as inactive (`isActive()` in `features/users/queries.ts`).
+- `getCurrentUser()` returns null for inactive accounts, and deactivating an account deletes all its sessions, so access ends immediately.
+- If no founder exists, `ensureFounder()` (run on sign-up and sign-in) makes the **oldest** account the founder and activates it. On a new database, the first sign-up becomes the founder.
+- Admin pages live under `/admin` (`src/features/admin/`). Only super-admins see the left-panel **Admin** button, which opens a popup menu. Its links are `ADMIN_NAV_ITEMS` (`features/admin/constants.ts`), so add new admin pages there. `/admin` itself redirects to the first one.
+- `/admin/users` lists every account with Activate / Deactivate buttons. Clicking a row opens the full profile in a `PsModal` (`?user=<id>`), where the role can be changed and the account deleted (after the confirm popup). Deleting removes the user, their sessions and avatar file. Founders can't be deleted (change their role first). Super-admins can't change their own role, deactivate or delete themselves, so one always remains.
+- Admin pages, actions and route handlers must call `requireSuperAdmin()` (`features/auth/dal.ts`), which returns a 404 for everyone else. Super-admin accounts can't be deactivated from there.
+
+### Required profile (`src/features/profile/`)
+
+- After their first sign-in (and on every sign-in until done) users must complete their profile at `/complete-profile`: avatar, full name, display name (unique, case-insensitive), birthday, address, phone (with country). All required. It's stored as `UserDoc.profile`; `PublicUser.profileComplete` says whether it's done.
+- **The main site lives in the `src/app/(main)/` route group.** Its layout renders `PsAppShell`. The left panel and topbar are static; the topbar profile badge (`PsCurrentUserMenu`) and the page content (`PsProfileGate`) wait for the session and redirect incomplete or signed-out users.
+- The topbar profile badge opens a menu with **Update profile** (`/profile`, `PROFILE_PATH`) and **Sign out**. `/profile` reuses `PsProfileForm` with `mode="update"`. The photo is optional there, and a replaced photo is deleted only after the new one is saved.
+- Avatars are served by `/api/avatars/[id]`, only to signed-in members with a complete profile. Build URLs with `avatarUrl(id)` (`features/profile/constants.ts`); `PublicUser.profile.avatarUrl` already has one. Render them with `PsAvatar src={...}`, which uses a plain `<img>` because Next's image optimizer can't fetch auth-protected URLs.
+- **Every main-site page, server action and route handler must also call `requireCompleteProfile()`** (`features/auth/dal.ts`) itself. Layouts don't re-run on client-side navigation, so the layout gate alone isn't a security boundary.
+- Pages outside `(main)` that signed-in users with incomplete profiles may use (like `/complete-profile`) go in `src/app/(auth)/`.
+- To add a profile field: add it to `profileSchema` (`validation.ts`), `PROFILE_FIELDS` (`constants.ts`), `UserProfile` (`features/users/types.ts`), and an input in `ps-profile-form.tsx`.
+- Phone numbers are validated server-side with `libphonenumber-js/max` and stored as `{ number: E.164, country: ISO code }`. Birthdays are stored as `"YYYY-MM-DD"` text so time zones can't shift them.
+
+## 5. CSS lives in `src/static/css/`, one file per unit
+
+- Do **not** add styles to `src/app/globals.css`. It only loads Tailwind and the base files.
+- `src/static/css/base/`: shared foundations, imported from `globals.css`.
+  - `theme.css`: design tokens and `@theme`.
+  - `base.css`: element defaults.
+  - Add a new base file here only for truly global concerns.
+- `src/static/css/components/<component-file-name>.css`: styles for one component, named after it (e.g. `ps-snackbar.css` for `ps-snackbar.tsx`).
+  - The component imports its own file: `import "@/static/css/components/ps-snackbar.css";`, so the CSS loads only where it's used.
+  - Class names are prefixed with the component's name, BEM style: `.ps-snackbar`, `.ps-snackbar__progress`, `.ps-animated-bg__column`.
+  - Keyframes are prefixed `ps-`.
+  - Pass per-instance values with CSS variables (e.g. `style={{ "--ps-snackbar-duration": "5000ms" }}`) and states with `data-*` attributes, not inline `animation` or `transition` strings.
+- Plain Tailwind utilities in JSX are still fine for layout, spacing and colour. Use a unit CSS file for keyframes, complex gradients, pseudo-elements, media-query behaviour (e.g. reduced motion), and anything hard to read as utilities.
+- Unit files are not processed with Tailwind's `@theme`. Only `base/theme.css` (imported via `globals.css`) can define Tailwind tokens.
+
+## 6. Snackbars (`src/features/snackbar/`)
+
+- Shown at the top right, just below the topbar (80px from the top), for 5 s (paused while hovered or focused), max 5 at once (the oldest is dropped). Types: `default`, `success`, `info`, `warning`, `error`.
+- `<PsSnackbarViewport />` is mounted once in the root layout. Don't mount it again.
+- **Client code:** `import { snackbar } from "@/features/snackbar/store"`, then `snackbar.success("Saved")`, `snackbar.error(msg, { title, duration })`, `snackbar.dismiss(id)`.
+- **Server actions and route handlers:** `await flashSnackbar({ type, message })` from `@/features/snackbar/flash`, usually right before `redirect()`. A short-lived `ps_flash` cookie carries it to the next page.
+- Never call `snackbar.*` on the server. Its state is module-level and would leak between users.
+- Defaults (duration, max) live in `src/features/snackbar/constants.ts`.
+
+## 7. Finish every task with a commit message suggestion
 
 At the end of every task, suggest a commit message in Conventional Commits format,
 e.g. `feat(auth): add display name to sign-up`, in a code block the user can copy.

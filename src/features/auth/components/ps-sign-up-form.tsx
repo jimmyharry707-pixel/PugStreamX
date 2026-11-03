@@ -32,6 +32,14 @@ export function PsSignUpForm() {
         hint={`At least ${PASSWORD_MIN_LENGTH} characters.`}
         errors={state?.errors?.password}
       />
+      <PsFormField
+        label="Confirm password"
+        name="confirmPassword"
+        type="password"
+        autoComplete="new-password"
+        required
+        errors={state?.errors?.confirmPassword}
+      />
       <PsButton type="submit" disabled={pending} className="w-full">
         {pending ? "Creating account…" : "Create account"}
       </PsButton>

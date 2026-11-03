@@ -1,0 +1,201 @@
+/* PsAnimatedBackground (src/components/layout/ps-animated-background.tsx)
+   Only `transform` is animated, so the browser can run it on the GPU. */
+
+/* Drifting color glows */
+.ps-animated-bg__glow--a {
+  animation: ps-drift-a 26s ease-in-out infinite;
+}
+
+.ps-animated-bg__glow--b {
+  animation: ps-drift-b 32s ease-in-out infinite;
+}
+
+.ps-animated-bg__glow--c {
+  animation: ps-drift-c 22s ease-in-out infinite;
+}
+
+/* Widget columns. Each holds two identical copies (A then B), so its height is 2 × copy.
+   Columns hang from the screen's center line. Moving between -25% (A's middle at the center line)
+   and -75% (B's middle at the center line) shows identical frames, so the loop has no visible seam.
+   Because one copy is taller than the screen (see the .tsx), content covers the screen at every
+   point in between. Speed comes from --ps-column-duration, set inline per column.
+   Every loop below must end on exactly the frame it starts on. */
+.ps-animated-bg__column {
+  animation: ps-scroll-up var(--ps-column-duration, 45s) linear infinite;
+}
+
+.ps-animated-bg__column[data-direction="down"] {
+  animation-name: ps-scroll-down;
+}
+
+/* Widgets. Per-instance offsets come in as CSS variables so they don't move in sync. */
+
+/* Performance: bar chart bars rise and fall. */
+.ps-animated-bg__bar {
+  transform-origin: bottom;
+  animation: ps-bar 3.6s ease-in-out var(--ps-bar-delay, 0s) infinite;
+}
+
+/* Performance: line chart draws in, holds, then erases forward. Empty at both ends, so no pop. */
+.ps-animated-bg__line {
+  stroke-dasharray: 1;
+  animation: ps-line-draw 8s ease-in-out var(--ps-line-delay, 0s) infinite;
+}
+
+/* Goals: progress bars fill to --ps-progress (0–1). */
+.ps-animated-bg__progress {
+  transform-origin: left;
+  animation: ps-progress 7s ease-in-out var(--ps-progress-delay, 0s) infinite;
+}
+
+/* Discussion: "someone is typing" dots. */
+.ps-animated-bg__typing > span {
+  animation: ps-typing 1.2s ease-in-out infinite;
+}
+
+.ps-animated-bg__typing > span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.ps-animated-bg__typing > span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* Tasks: the checkmark on completed tasks draws in, holds, then erases forward (no pop). */
+.ps-animated-bg__check path {
+  stroke-dasharray: 1;
+  animation: ps-check 6s ease-in-out infinite;
+}
+
+/* Darkens toward the center so foreground content stays readable. */
+.ps-animated-bg__scrim {
+  background: radial-gradient(
+    ellipse at center,
+    rgb(9 9 11 / 0.82) 0%,
+    rgb(9 9 11 / 0.55) 55%,
+    rgb(9 9 11 / 0.85) 100%
+  );
+}
+
+@keyframes ps-scroll-up {
+  from {
+    transform: translateY(-25%);
+  }
+  to {
+    transform: translateY(-75%);
+  }
+}
+
+@keyframes ps-scroll-down {
+  from {
+    transform: translateY(-75%);
+  }
+  to {
+    transform: translateY(-25%);
+  }
+}
+
+@keyframes ps-bar {
+  0%,
+  100% {
+    transform: scaleY(0.55);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* dashoffset 1 and -1 both show the gap (nothing drawn), so 100% matches 0%. */
+@keyframes ps-line-draw {
+  0% {
+    stroke-dashoffset: 1;
+  }
+  40%,
+  75% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -1;
+  }
+}
+
+@keyframes ps-progress {
+  0% {
+    transform: scaleX(0.1);
+  }
+  40%,
+  85% {
+    transform: scaleX(var(--ps-progress, 0.7));
+  }
+  100% {
+    transform: scaleX(0.1);
+  }
+}
+
+@keyframes ps-typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes ps-check {
+  0%,
+  10% {
+    stroke-dashoffset: 1;
+  }
+  30%,
+  80% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -1;
+  }
+}
+
+@keyframes ps-drift-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(12vw, 10vh) scale(1.15);
+  }
+}
+
+@keyframes ps-drift-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1.1);
+  }
+  50% {
+    transform: translate(-14vw, -8vh) scale(0.95);
+  }
+}
+
+@keyframes ps-drift-c {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(-10vw, 6vh);
+  }
+  66% {
+    transform: translate(8vw, -10vh);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-animated-bg *,
+  .ps-animated-bg *::before,
+  .ps-animated-bg *::after {
+    animation-play-state: paused !important;
+  }
+}

@@ -1,0 +1,65 @@
+/*
+ * PsTable (ps-table.tsx). In the `components` layer so Tailwind utilities passed as className
+ * still win, e.g. `max-sm:pl-[4.25rem]` to indent a cell on phones.
+ */
+@layer components {
+  .ps-table__cell,
+  .ps-table__head-cell {
+    padding: 0.75rem 1rem;
+  }
+
+  /* Takes the leftover width and truncates its content instead of widening the table. */
+  .ps-table__cell--grow {
+    width: 100%;
+    max-width: 0;
+  }
+
+  /*
+   * Stacked tables on phones: every row becomes a small card whose cells wrap onto lines,
+   * with no header. Cells choose their part of a line with data-stack:
+   *   full (own line), fill (the rest of the line), auto (its own width), hide.
+   */
+  @media (max-width: 639.98px) {
+    .ps-table--stack,
+    .ps-table--stack > tbody {
+      display: block;
+    }
+
+    .ps-table--stack > thead {
+      display: none;
+    }
+
+    .ps-table--stack > tbody > tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 0.25rem 0 0.75rem;
+    }
+
+    .ps-table--stack > tbody > tr > .ps-table__cell {
+      min-width: 0;
+      padding: 0.5rem 1rem 0;
+    }
+
+    .ps-table--stack .ps-table__cell--grow {
+      width: auto;
+      max-width: none;
+    }
+
+    .ps-table--stack [data-stack="full"] {
+      flex-basis: 100%;
+    }
+
+    .ps-table--stack [data-stack="fill"] {
+      flex: 1 1 0%;
+    }
+
+    .ps-table--stack [data-stack="auto"] {
+      flex: none;
+    }
+
+    .ps-table--stack [data-stack="hide"] {
+      display: none;
+    }
+  }
+}

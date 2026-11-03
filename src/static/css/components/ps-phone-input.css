@@ -1,0 +1,59 @@
+/* PsPhoneInput (src/components/ui/ps-phone-input.tsx)
+   Dark-theme overrides for react-phone-number-input. Its own base styles come from
+   "react-phone-number-input/style.css", imported by the component before this file.
+   Tailwind only emits color variables that are used, so each var() has a fallback. */
+
+.ps-phone-input {
+  gap: 0.5rem;
+
+  --PhoneInputCountryFlag-height: 1em;
+  --PhoneInputCountryFlag-borderColor: rgb(255 255 255 / 0.15);
+  --PhoneInputCountrySelectArrow-color: #a1a1aa;
+  --PhoneInputCountrySelectArrow-opacity: 1;
+  --PhoneInputCountryFlag-borderColor--focus: var(--color-amber-400, #fbbf24);
+  --PhoneInputCountrySelectArrow-color--focus: var(--color-amber-400, #fbbf24);
+}
+
+/* Country picker styled as a box that matches PsInput. */
+.ps-phone-input .PhoneInputCountry {
+  align-self: stretch;
+  margin-right: 0;
+  padding: 0 0.625rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 0.5rem;
+  background: var(--color-zinc-800, #27272a);
+}
+
+.ps-phone-input .PhoneInputCountry:focus-within {
+  border-color: var(--color-amber-400, #fbbf24);
+}
+
+/* Before a country is chosen the library renders no icon, leaving just an arrow. Show a globe. */
+.ps-phone-input .PhoneInputCountry:not(:has(.PhoneInputCountryIcon))::before {
+  content: "";
+  width: 1.125rem;
+  height: 1.125rem;
+  background-color: #a1a1aa;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.ps-phone-input .PhoneInputCountry:focus-within::before {
+  background-color: var(--color-amber-400, #fbbf24);
+}
+
+/* The library lays a transparent native <select> over the flag. Give its menu dark colors. */
+.ps-phone-input .PhoneInputCountrySelect {
+  color-scheme: dark;
+  background: var(--color-zinc-900, #18181b);
+  color: var(--foreground);
+}
+
+.ps-phone-input .PhoneInputInput {
+  flex: 1;
+}
+
+/* Error state: PsField puts aria-invalid on the number input; mirror it on the country box. */
+.ps-phone-input:has(input[aria-invalid="true"]) .PhoneInputCountry {
+  border-color: var(--color-red-500, #ef4444);
+}
