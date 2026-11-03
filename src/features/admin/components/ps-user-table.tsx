@@ -24,10 +24,13 @@ export function PsUserTable({
   users,
   currentUserId,
   profileHref,
+  groupNames,
 }: {
   users: UserListItem[];
   currentUserId: string;
   profileHref: (userId: string) => string;
+  /** Group id → name. */
+  groupNames: Record<string, string>;
 }) {
   return (
     <PsTable label="Users" stack>
@@ -67,12 +70,16 @@ export function PsUserTable({
               </PsTableCell>
               <PsTableCell hideBelow="md" className="text-gray-300">
                 {roleLabel(user.role)}
+                {user.groupId && groupNames[user.groupId] && <p className="text-xs text-gray-500">{groupNames[user.groupId]}</p>}
               </PsTableCell>
               {/* Phones: indented under the name (16px padding + 40px avatar + 12px gap), with the role. */}
               <PsTableCell stack="fill" className="max-sm:flex max-sm:flex-wrap max-sm:items-center max-sm:gap-x-2 max-sm:gap-y-1 max-sm:pl-[4.25rem]">
                 <PsUserStatusBadge active={user.active} />
                 {/* The Role column is hidden below md; show it here instead. */}
-                <span className="whitespace-nowrap text-xs text-gray-400 md:hidden">{roleLabel(user.role)}</span>
+                <span className="whitespace-nowrap text-xs text-gray-400 md:hidden">
+                  {roleLabel(user.role)}
+                  {user.groupId && groupNames[user.groupId] && <> · {groupNames[user.groupId]}</>}
+                </span>
               </PsTableCell>
               <PsTableCell hideBelow="lg" className="whitespace-nowrap text-gray-400">
                 <time dateTime={user.createdAt}>{dateFormat.format(new Date(user.createdAt))}</time>

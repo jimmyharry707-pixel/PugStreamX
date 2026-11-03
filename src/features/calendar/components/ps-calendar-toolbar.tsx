@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { PsButton } from "@/components/ui/ps-button";
 import { PsIconButton } from "@/components/ui/ps-icon-button";
 import { weekTitle } from "../dates";
@@ -14,7 +15,8 @@ const chevron = (d: string) => (
 
 /**
  * Calendar header: Today, previous / next week, the week's title (which opens a month calendar
- * popup for jumping to another week), Create and the time zone picker.
+ * popup for jumping to another week), Create (when `onCreate` is given), `extra` controls (e.g.
+ * a group picker) and the time zone picker.
  */
 export function PsCalendarToolbar({
   date,
@@ -23,8 +25,11 @@ export function PsCalendarToolbar({
   onCreate,
   timeZone,
   onTimeZoneChange,
+  extra,
 }: {
-  onCreate: () => void;
+  /** Only for people who may create schedules. */
+  onCreate?: () => void;
+  extra?: ReactNode;
   date: Date;
   today: Date | null;
   /** Show the week holding this date; null for this week. */
@@ -57,12 +62,15 @@ export function PsCalendarToolbar({
         onSelect={onGo}
       />
       {/* Phones use the floating button in PsCalendar instead. */}
-      <PsButton size="sm" onClick={onCreate} title="Create (C)" className="gap-1.5 py-1.5 pl-3 pr-4 max-sm:hidden">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" className="size-4" aria-hidden>
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-        Create
-      </PsButton>
+      {onCreate && (
+        <PsButton size="sm" onClick={onCreate} title="Create (C)" className="gap-1.5 py-1.5 pl-3 pr-4 max-sm:hidden">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" className="size-4" aria-hidden>
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Create
+        </PsButton>
+      )}
+      {extra}
       <PsTimeZoneSelect value={timeZone} onChange={onTimeZoneChange} />
     </div>
   );

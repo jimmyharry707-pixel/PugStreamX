@@ -3,8 +3,10 @@ import { parsePhoneNumberFromString } from "libphonenumber-js/max";
 import type { ReactNode } from "react";
 import { PsAvatar } from "@/components/ui/ps-avatar";
 import { roleLabel } from "@/features/users/roles";
+import type { Group } from "@/features/groups/types";
 import type { UserDetails } from "@/features/users/types";
 import { PsUserAccountActions } from "./ps-user-account-actions";
+import { PsUserGroupForm } from "./ps-user-group-form";
 import { PsUserRoleForm } from "./ps-user-role-form";
 import { PsUserStatusBadge } from "./ps-user-status-badge";
 
@@ -21,7 +23,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** A user's full profile, status and role controls. Server-only: for the Admin pages. */
-export function PsUserProfile({ user, isSelf }: { user: UserDetails; isSelf: boolean }) {
+export function PsUserProfile({ user, isSelf, groups }: { user: UserDetails; isSelf: boolean; groups: Group[] }) {
   const name = user.profile?.displayName ?? user.email;
   const d = user.details;
   const phone = d ? parsePhoneNumberFromString(d.phone.number) : undefined;
@@ -70,6 +72,7 @@ export function PsUserProfile({ user, isSelf }: { user: UserDetails; isSelf: boo
       </dl>
 
       <PsUserRoleForm key={user.id} userId={user.id} role={user.role} isSelf={isSelf} />
+      <PsUserGroupForm key={`group-${user.id}`} userId={user.id} groupId={user.groupId} groups={groups} />
 
       {/* You can't change your own account. Active founders can't be deactivated, and founders
           can't be deleted (change their role first). */}

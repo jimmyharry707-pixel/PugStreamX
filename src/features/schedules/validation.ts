@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { isValidTimeZone, zonedToUtc } from "@/lib/utils/time-zone";
-import { NAME_MAX, NOTE_MAX, SCHEDULE_UID_PATTERN, TITLE_MAX, URL_MAX } from "./constants";
+import { LINKS_MAX, NAME_MAX, NOTE_MAX, SCHEDULE_UID_PATTERN, TITLE_MAX, URL_MAX } from "./constants";
 
 const requiredText = (message: string, max: number) =>
   z.string({ error: message }).trim().min(1, message).max(max, `Use at most ${max} characters.`);
@@ -24,6 +24,23 @@ const link = (message: string) =>
 /** Empty optional fields are stored as null. */
 const optional = <T extends z.ZodType>(schema: T) =>
   z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : v), schema.nullable());
+
+/** A note. Browsers send line breaks from a textarea as \r\n; store plain \n. */
+const noteText = z
+  .string()
+  .trim()
+  .transform((v) => v.replace(/\r\n?/g, "\n"))
+  .pipe(z.string().max(NOTE_MAX, `Use at most ${NOTE_MAX} characters.`));
+
+/** A Caller's fields. The link only counts while the schedule requires screen share. */
+export const callerSchema = z.object({
+  scheduleId: z.string().regex(/^[a-f0-9]{24}$/i),
+  screenShareUrl: optional(link("Enter the screen share link.")),
+  callerNote: optional(noteText),
+});
+
+/** "482 910-3756" → "4829103756". */
+export const normalizeUid = (value: string) => value.replace(/[\s-]/g, "");
 
 const time = (message: string) => z.string({ error: message }).regex(/^([01]\d|2[0-3]):[0-5]\d$/, message);
 
@@ -52,23 +69,19 @@ export const scheduleSchema = z
     meetingUrl: link("Enter the meeting link."),
     resumeUrl: link("Enter the resume link."),
     jobDescriptionUrl: link("Enter the job description link."),
-    screenShareUrl: optional(link("Enter the screen share link.")),
-    // Another schedule's ID. Whether it exists and is the member's is checked in the action.
-    // Spaces and dashes are ignored ("482 910 3756").
-    linkedUid: optional(
-      z
-        .string()
-        .transform((v) => v.replace(/[\s-]/g, ""))
-        .pipe(z.string().regex(SCHEDULE_UID_PATTERN, "Enter a 10-digit schedule ID.")),
-    ),
-    // Browsers send line breaks from a textarea as \r\n; store plain \n.
-    note: optional(
-      z
-        .string()
-        .trim()
-        .transform((v) => v.replace(/\r\n?/g, "\n"))
-        .pipe(z.string().max(NOTE_MAX, `Use at most ${NOTE_MAX} characters.`)),
-    ),
+    // A switch: sent as "on" when on, missing when off. The Caller adds the link itself.
+    screenShareRequired: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
+    // Other schedules' IDs, one per row. Whether they're in the group is checked in the action. Spaces and dashes are ignored ("482 910 3756"); empty rows and repeats dropped.
+    linkedUids: z
+      .array(
+        z
+          .string()
+          .transform(normalizeUid)
+          .refine((v) => v === "" || SCHEDULE_UID_PATTERN.test(v), "Enter a 10-digit schedule ID."),
+      )
+      .transform((uids) => [...new Set(uids.filter(Boolean))])
+      .refine((uids) => uids.length <= LINKS_MAX, `Link at most ${LINKS_MAX} schedules.`),
+    note: optional(noteText),
   })
   .refine((v) => v.to > v.from, { path: ["to"], message: "End time must be after the start time." })
   .transform(({ date, from, to, ...rest }) => ({

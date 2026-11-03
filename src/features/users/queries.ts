@@ -63,5 +63,6 @@ export function toPublicUser(user: UserDoc): PublicUser {
         : null,
     role,
     isSuperAdmin: isSuperAdmin(role),
+    groupId: user.groupId?.toHexString() ?? null,
   };
 }

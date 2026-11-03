@@ -3,12 +3,15 @@
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PsDialog } from "@/components/ui/ps-dialog";
+import { PsSelect } from "@/components/ui/ps-select";
+import { GROUP_PARAM } from "@/features/groups/constants";
+import type { Group } from "@/features/groups/types";
 import { PsScheduleDetails } from "@/features/schedules/components/ps-schedule-details";
 import { PsScheduleForm, type ScheduleFormDefaults } from "@/features/schedules/components/ps-schedule-form";
 import { reschedule } from "@/features/schedules/actions";
 import { SCHEDULES_API_PATH } from "@/features/schedules/constants";
 import { formatShortDate, formatTimeRange, minutesToTime } from "@/features/schedules/format";
-import type { Schedule } from "@/features/schedules/types";
+import type { CalendarMode, Schedule } from "@/features/schedules/types";
 import { useSchedules } from "@/features/schedules/use-schedules";
 import { snackbar } from "@/features/snackbar/store";
 import { zonedTime, zonedToUtc } from "@/lib/utils/time-zone";
@@ -42,7 +45,7 @@ function toEvents(schedule: Schedule, timeZone: string): CalendarEvent[] {
 }
 
 /**
- * Google-Calendar-style week calendar of the member's schedules, using the full width. The
+ * Google-Calendar-style week calendar of a group's schedules, using the full width. The
  * title in its toolbar opens a month calendar popup for jumping to a week. The shown week lives
  * in the URL (`?date=2026-11-03`, any day of that week); without a date it shows this week.
  * Moving around updates the URL in the browser only (no server request).
@@ -50,13 +53,21 @@ function toEvents(schedule: Schedule, timeZone: string): CalendarEvent[] {
  * "Today", the current-time line and schedule times follow the time zone picked in the toolbar
  * (remembered in this browser; the device's by default).
  *
- * Schedules: Create (or click or drag in an empty spot) opens the form; click a schedule for its
- * details, then Edit or Delete; drag a schedule (or its bottom edge) to change its time.
+ * What the viewer can do depends on `mode` (decided on the server, access.ts):
+ * - "manage" (Profile Manager): Create (or click or drag in an empty spot) opens the form; click a
+ *   schedule for its details, then Edit or Delete; drag a schedule (or its bottom edge) to move it.
+ * - "call" (Caller): see schedules; in the details, add the screen share link and a caller note.
+ * - "view" (super-admin): see any group's calendar, picked from `groups` (`?group=<id>`).
  *
- * Keyboard shortcuts: T this week, J / N next week, K / P previous week, C create.
+ * Keyboard shortcuts: T this week, J / N next week, K / P previous week, C create (manage only).
  */
-export function PsCalendar() {
+export function PsCalendar({ mode, groups = [] }: { mode: CalendarMode; groups?: Group[] }) {
   const searchParams = useSearchParams();
+  const manage = mode === "manage";
+  // Super-admins view one group at a time: the one in the URL, else the first.
+  const requestedGroup = searchParams.get(GROUP_PARAM);
+  const viewedGroup = mode === "view" ? (groups.find((g) => g.id === requestedGroup) ?? groups[0] ?? null) : null;
+  const groupQuery = viewedGroup ? `${GROUP_PARAM}=${viewedGroup.id}` : null;
   const now = useNow();
   const timeZoneSetting = useTimeZoneSetting();
   const timeZone = timeZoneSetting === null ? null : timeZoneSetting || deviceTimeZone();
@@ -72,22 +83,30 @@ export function PsCalendar() {
     const nextWeek = toDateKey(addDays(parseDateKey(weekKey)!, 7));
     return { from: zonedToUtc(weekKey, "00:00", timeZone), to: zonedToUtc(nextWeek, "00:00", timeZone) };
   }, [weekKey, timeZone]);
-  const { schedules, failed, reload, patch } = useSchedules(range);
+  const { schedules, failed, reload, patch } = useSchedules(range, groupQuery);
 
   useEffect(() => {
-    if (failed) snackbar.error("Couldn't load your schedules. Check your connection and reload the page.");
+    if (failed) snackbar.error("Couldn't load the schedules. Check your connection and reload the page.");
   }, [failed]);
 
-  const go = useCallback((nextDate: Date | null) => {
-    window.history.pushState(null, "", nextDate ? `?date=${toDateKey(nextDate)}` : window.location.pathname);
+  /** Changes the URL's search params (keeping the others) without a page request. */
+  const setParams = useCallback((changes: Record<string, string | null>) => {
+    const params = new URLSearchParams(window.location.search);
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === null) params.delete(key);
+      else params.set(key, value);
+    }
+    const query = params.toString();
+    window.history.pushState(null, "", query ? `?${query}` : window.location.pathname);
   }, []);
+  const go = useCallback((nextDate: Date | null) => setParams({ date: nextDate ? toDateKey(nextDate) : null }), [setParams]);
 
   /**
    * Opens the form for a new schedule: on `day` from `minutes` to `endMinutes` (an hour if not
    * given), else at the next hour today (or 9 AM on the week's first day when another week is shown).
    */
   const create = (day?: Date, minutes?: number, endMinutes?: number) => {
-    if (!date || !zoned || !timeZone) return;
+    if (!manage || !date || !zoned || !timeZone) return;
     const days = weekDays(date);
     const onToday = days.some((d) => isSameDay(d, zoned.day));
     const target = day ?? (onToday ? zoned.day : days[0]);
@@ -183,8 +202,8 @@ export function PsCalendar() {
       meetingUrl: schedule.meetingUrl ?? "",
       resumeUrl: schedule.resumeUrl,
       jobDescriptionUrl: schedule.jobDescriptionUrl,
-      screenShareUrl: schedule.screenShareUrl ?? "",
-      linkedUid: schedule.linkedUid ?? "",
+      screenShareRequired: schedule.screenShareRequired ? "on" : "",
+      linkedUids: schedule.linkedUids,
       note: schedule.note ?? "",
     };
   };
@@ -196,9 +215,25 @@ export function PsCalendar() {
         date={date}
         today={zoned.day}
         onGo={go}
-        onCreate={() => create()}
+        onCreate={manage ? () => create() : undefined}
         timeZone={timeZoneSetting}
         onTimeZoneChange={setTimeZoneSetting}
+        extra={
+          mode === "view" && viewedGroup ? (
+            <PsSelect
+              aria-label="Group"
+              value={viewedGroup.id}
+              onChange={(e) => setParams({ [GROUP_PARAM]: e.target.value })}
+              className="h-8 max-w-40 rounded-full py-0 pl-3 text-xs sm:max-w-56"
+            >
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </PsSelect>
+          ) : null
+        }
       />
       <PsCalendarTimeGrid
         days={weekDays(date)}
@@ -206,6 +241,7 @@ export function PsCalendar() {
         nowMinutes={zoned.minutes}
         zoneLabel={zoned.label}
         events={events}
+        editable={manage}
         onEventChange={onEventChange}
         onEventClick={(id) => {
           const schedule = schedules.find((s) => s.id === id);
@@ -215,26 +251,33 @@ export function PsCalendar() {
       />
 
       {/* Phones: Create floats at the bottom right, like Google Calendar. */}
-      <button
-        type="button"
-        aria-label="Create schedule"
-        onClick={() => create()}
-        className="fixed bottom-5 right-5 z-10 grid size-14 place-items-center rounded-2xl bg-brand-400 text-gray-950 shadow-lg shadow-black/40 transition hover:bg-brand-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 sm:hidden"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" className="size-6" aria-hidden>
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </button>
+      {manage && (
+        <button
+          type="button"
+          aria-label="Create schedule"
+          onClick={() => create()}
+          className="fixed bottom-5 right-5 z-10 grid size-14 place-items-center rounded-2xl bg-brand-400 text-gray-950 shadow-lg shadow-black/40 transition hover:bg-brand-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 sm:hidden"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" className="size-6" aria-hidden>
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+      )}
 
       {dialog?.mode === "view" && (
         <PsDialog title={dialog.schedule.title} onClose={() => setDialog(null)}>
           <PsScheduleDetails
             key={dialog.schedule.id}
             schedule={dialog.schedule}
+            mode={mode}
             timeZone={timeZone}
+            onCallerSaved={(schedule) => {
+              setDialog({ ...dialog, schedule });
+              reload();
+            }}
             // A linked schedule may be in another week, so it's loaded by its ID.
             onOpenLinked={async (uid) => {
-              const res = await fetch(`${SCHEDULES_API_PATH}/${uid}`, { cache: "no-store" }).catch(() => null);
+              const res = await fetch(`${SCHEDULES_API_PATH}/${uid}${groupQuery ? `?${groupQuery}` : ""}`, { cache: "no-store" }).catch(() => null);
               if (!res?.ok) return res?.status === 404 ? "That schedule no longer exists." : "Couldn't open that schedule. Try again.";
               const { schedule } = (await res.json()) as { schedule: Schedule };
               setDialog({ mode: "view", schedule, back: [...dialog.back, dialog.schedule] });

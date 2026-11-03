@@ -52,6 +52,9 @@ export type EventChange = { mode: "move"; days: number; minutes: number } | { mo
  *
  * Events, like Google Calendar: drag one (mouse or pen) to another time or day, or drag its
  * bottom edge to change when it ends, snapped to 15 minutes; then `onEventChange`. Esc cancels.
+ *
+ * Without `editable` (people who may only look), empty space does nothing and events can't be
+ * dragged; clicking an event still opens it.
  */
 export function PsCalendarTimeGrid({
   days,
@@ -59,10 +62,12 @@ export function PsCalendarTimeGrid({
   nowMinutes,
   zoneLabel,
   events,
+  editable = true,
   onEventClick,
   onEventChange,
   onSlotSelect,
 }: {
+  editable?: boolean;
   days: Date[];
   today: Date;
   nowMinutes: number;
@@ -208,7 +213,7 @@ export function PsCalendarTimeGrid({
                 onPointerDown={(e) => {
                   // A press that starts on an event never creates one, even if released on empty space.
                   pressOnEvent.current = !!(e.target as Element).closest(".ps-calendar-time-grid__event");
-                  if (pressOnEvent.current || e.button !== 0 || e.pointerType === "touch") return;
+                  if (!editable || pressOnEvent.current || e.button !== 0 || e.pointerType === "touch") return;
                   e.preventDefault(); // no text selection while dragging
                   e.currentTarget.setPointerCapture(e.pointerId);
                   dragRef.current = { dayIndex, anchor: minutesAt(e.currentTarget, e.clientY, DRAG_STEP), startY: e.clientY, range: null };
@@ -231,10 +236,10 @@ export function PsCalendarTimeGrid({
                 }}
                 onPointerCancel={endDrag}
                 onClick={(e) => {
-                  if (skipClick.current || pressOnEvent.current || (e.target as Element).closest(".ps-calendar-time-grid__event")) return;
+                  if (!editable || skipClick.current || pressOnEvent.current || (e.target as Element).closest(".ps-calendar-time-grid__event")) return;
                   onSlotSelect(day, minutesAt(e.currentTarget, e.clientY, 30));
                 }}
-                className={cn("ps-calendar-time-grid__column", draft && "select-none")}
+                className={cn("ps-calendar-time-grid__column", draft && "select-none", !editable && "cursor-default")}
               >
                 {draft?.dayIndex === dayIndex && (
                   <div
@@ -269,7 +274,7 @@ export function PsCalendarTimeGrid({
                       }}
                       onPointerDown={(e) => {
                         skipEventClick.current = false; // a new press starts fresh (even after Esc)
-                        if (e.button !== 0 || e.pointerType === "touch") return;
+                        if (!editable || e.button !== 0 || e.pointerType === "touch") return;
                         e.preventDefault();
                         e.currentTarget.setPointerCapture(e.pointerId);
                         eventDragRef.current = {
@@ -333,7 +338,7 @@ export function PsCalendarTimeGrid({
                       {minutes >= 45 && <span className="truncate text-event-200">{event.time}</span>}
                       {minutes >= 75 && event.detail && <span className="truncate text-event-200">{event.detail}</span>}
                       {/* Drag the bottom edge to change when it ends. */}
-                      <span aria-hidden className="ps-calendar-time-grid__resize" />
+                      {editable && <span aria-hidden className="ps-calendar-time-grid__resize" />}
                     </button>
                   );
                 })}

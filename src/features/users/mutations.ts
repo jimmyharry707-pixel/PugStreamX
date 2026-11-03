@@ -101,6 +101,12 @@ export async function updateUserRole(userId: ObjectId, role: Role | null): Promi
   return user ? { ok: true, user } : { ok: false, reason: "not_found" };
 }
 
+/** Puts a user in a group (or none). Null if the account doesn't exist. */
+export async function updateUserGroup(userId: ObjectId, groupId: ObjectId | null): Promise<UserDoc | null> {
+  const users = await getCollection<UserDoc>("users");
+  return users.findOneAndUpdate({ _id: userId }, { $set: { groupId, updatedAt: new Date() } }, { returnDocument: "after" });
+}
+
 export type DeleteUserResult = { ok: true; user: UserDoc } | { ok: false; reason: "not_found" | "founder" };
 
 /**

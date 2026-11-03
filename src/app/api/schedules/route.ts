@@ -1,15 +1,20 @@
-import { ObjectId } from "mongodb";
 import { getCurrentUser } from "@/features/auth/dal";
+import { GROUP_PARAM } from "@/features/groups/constants";
+import { calendarAccess } from "@/features/schedules/access";
 import { SCHEDULE_RANGE_MAX_DAYS } from "@/features/schedules/constants";
 import { listSchedules } from "@/features/schedules/queries";
 
-// GET /api/schedules?from=<ISO>&to=<ISO>: the signed-in member's own schedules in that range,
-// for the calendar (which changes weeks in the browser, without a page request).
+// GET /api/schedules?from=<ISO>&to=<ISO>[&group=<id>]: a group calendar's schedules in that range
+// (the calendar changes weeks in the browser, without a page request). Profile Managers and
+// Callers get their own group's; super-admins pass `group` to view any group's.
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user?.profileComplete) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const params = new URL(request.url).searchParams;
+  const access = calendarAccess(user, params.get(GROUP_PARAM));
+  if (access.mode === "none" || !access.groupId) return Response.json({ error: "No calendar" }, { status: 403 });
+
   const from = new Date(params.get("from") ?? "");
   const to = new Date(params.get("to") ?? "");
   const days = (to.getTime() - from.getTime()) / 86_400_000;
@@ -17,6 +22,6 @@ export async function GET(request: Request) {
     return Response.json({ error: "Invalid range" }, { status: 400 });
   }
 
-  const schedules = await listSchedules(new ObjectId(user.id), from, to);
+  const schedules = await listSchedules(access.groupId, from, to);
   return Response.json({ schedules }, { headers: { "Cache-Control": "private, no-store" } });
 }

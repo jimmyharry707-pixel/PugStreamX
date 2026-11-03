@@ -7,7 +7,8 @@ import { timeZoneLabel } from "@/features/calendar/time-zone";
 import { confirm } from "@/features/confirm/store";
 import { removeSchedule } from "../actions";
 import { formatScheduleDate, formatShortDate, formatTimeRange, safeUrl } from "../format";
-import type { Schedule } from "../types";
+import type { CalendarMode, Schedule } from "../types";
+import { PsCallerForm } from "./ps-caller-form";
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -55,20 +56,27 @@ function ScheduleId({ uid }: { uid: string }) {
  * the schedule's own zone and, when that differs, also in the calendar's `timeZone`. Clicking the
  * linked schedule calls `onOpenLinked` (which returns an error message if it can't open);
  * `backTitle` / `onBack` return to the schedule this one was opened from.
+ *
+ * Everyone who can open it sees every field. `mode` decides the rest: "manage" (Profile Manager)
+ * shows Edit and Delete, "call" (Caller) shows the caller form, "view" (super-admin) nothing more.
  */
 export function PsScheduleDetails({
   schedule,
+  mode,
   timeZone,
   onEdit,
+  onCallerSaved,
   onDeleted,
   onOpenLinked,
   backTitle,
   onBack,
 }: {
   schedule: Schedule;
+  mode: CalendarMode;
   /** The calendar's time zone. */
   timeZone: string;
   onEdit: () => void;
+  onCallerSaved: (schedule: Schedule) => void;
   onDeleted: (message: string) => void;
   onOpenLinked: (uid: string) => Promise<string | null>;
   backTitle?: string;
@@ -85,7 +93,7 @@ export function PsScheduleDetails({
   async function onDelete() {
     const ok = await confirm({
       title: `Delete "${schedule.title}"?`,
-      message: "This schedule will be permanently deleted, and schedules linked to it lose the link. This can't be undone.",
+      message: "This schedule will be permanently deleted and removed from other schedules' links. This can't be undone.",
       confirmLabel: "Delete schedule",
       tone: "danger",
     });
@@ -145,21 +153,33 @@ export function PsScheduleDetails({
           <Link url={schedule.jobDescriptionUrl} />
         </Row>
         <Row label="Screen share">
-          <Link url={schedule.screenShareUrl} />
+          {!schedule.screenShareRequired ? (
+            <span className="text-gray-500">Not required</span>
+          ) : schedule.screenShareUrl ? (
+            <Link url={schedule.screenShareUrl} />
+          ) : (
+            <span className="text-warning-300">Required · the Caller hasn&apos;t added the link yet</span>
+          )}
         </Row>
-        <Row label="Linked schedule">
-          {linked ? (
-            <button
-              type="button"
-              onClick={() => openLinked(linked.uid)}
-              disabled={opening}
-              className="group flex max-w-full flex-col items-start rounded-md text-left disabled:opacity-60"
-            >
-              <span className="text-brand-300 underline-offset-2 group-hover:underline">{linked.title}</span>
-              <span className="text-xs text-gray-400">
-                {formatShortDate(new Date(linked.start), timeZone)}, {formatTimeRange(new Date(linked.start), new Date(linked.end), timeZone)}
-              </span>
-            </button>
+        <Row label="Linked schedules">
+          {linked.length > 0 ? (
+            <ul className="space-y-2">
+              {linked.map((item) => (
+                <li key={item.uid}>
+                  <button
+                    type="button"
+                    onClick={() => openLinked(item.uid)}
+                    disabled={opening}
+                    className="group flex max-w-full flex-col items-start rounded-md text-left disabled:opacity-60"
+                  >
+                    <span className="text-brand-300 underline-offset-2 group-hover:underline">{item.title}</span>
+                    <span className="text-xs text-gray-400">
+                      {formatShortDate(new Date(item.start), timeZone)}, {formatTimeRange(new Date(item.start), new Date(item.end), timeZone)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           ) : (
             <span className="text-gray-500">—</span>
           )}
@@ -167,18 +187,25 @@ export function PsScheduleDetails({
         <Row label="Note">
           {schedule.note ? <span className="whitespace-pre-line">{schedule.note}</span> : <span className="text-gray-500">—</span>}
         </Row>
+        <Row label="Note (Caller)">
+          {schedule.callerNote ? <span className="whitespace-pre-line">{schedule.callerNote}</span> : <span className="text-gray-500">—</span>}
+        </Row>
       </dl>
 
       {error && <PsAlert>{error}</PsAlert>}
 
-      <div className="flex flex-wrap justify-end gap-2">
-        <PsButton type="button" variant="danger" size="sm" onClick={onDelete} disabled={pending}>
-          {pending ? "Deleting…" : "Delete"}
-        </PsButton>
-        <PsButton type="button" variant="secondary" size="sm" onClick={onEdit} disabled={pending}>
-          Edit
-        </PsButton>
-      </div>
+      {mode === "call" && <PsCallerForm key={schedule.id} schedule={schedule} onSaved={onCallerSaved} />}
+
+      {mode === "manage" && (
+        <div className="flex flex-wrap justify-end gap-2">
+          <PsButton type="button" variant="danger" size="sm" onClick={onDelete} disabled={pending}>
+            {pending ? "Deleting…" : "Delete"}
+          </PsButton>
+          <PsButton type="button" variant="secondary" size="sm" onClick={onEdit} disabled={pending}>
+            Edit
+          </PsButton>
+        </div>
+      )}
     </div>
   );
 }

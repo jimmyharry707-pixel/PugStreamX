@@ -5,14 +5,17 @@ import { PsAlert } from "@/components/ui/ps-alert";
 import { PsButton } from "@/components/ui/ps-button";
 import { PsField } from "@/components/ui/ps-field";
 import { PsFormField } from "@/components/ui/ps-form-field";
-import { PsInput } from "@/components/ui/ps-input";
+import { PsSwitch } from "@/components/ui/ps-switch";
 import { PsTextarea } from "@/components/ui/ps-textarea";
 import { PsTimeZoneSelect } from "@/features/calendar/components/ps-time-zone-select";
 import { saveSchedule } from "../actions";
+import { PsLinkedSchedulesField } from "./ps-linked-schedules-field";
 import { NAME_MAX, NOTE_MAX, TITLE_MAX, URL_MAX, type ScheduleField } from "../constants";
 import type { Schedule } from "../types";
 
-export type ScheduleFormDefaults = Partial<Record<ScheduleField, string>>;
+export type ScheduleFormDefaults = Partial<Record<Exclude<ScheduleField, "linkedUids">, string>> & { linkedUids?: string[] };
+
+const NO_LINKS: string[] = [];
 
 /**
  * Create or edit a schedule (edit when `scheduleId` is set). The date and times are read in
@@ -34,6 +37,7 @@ export function PsScheduleForm({
   const [state, formAction, pending] = useActionState(saveSchedule, undefined);
   const values = state?.values ?? defaults;
   const errors = state?.errors ?? {};
+  const linkedValues = state?.linkedValues ?? defaults.linkedUids ?? NO_LINKS;
   const [timeZone, setTimeZone] = useState(defaults.timeZone);
 
   useEffect(() => {
@@ -112,39 +116,15 @@ export function PsScheduleForm({
         defaultValue={values.jobDescriptionUrl}
         errors={errors.jobDescriptionUrl}
       />
-      <PsField id="screenShareUrl" label="Screen share link (optional)" errors={errors.screenShareUrl}>
-        {(p) => (
-          <PsInput
-            name="screenShareUrl"
-            type="url"
-            inputMode="url"
-            maxLength={URL_MAX}
-            placeholder="https://"
-            defaultValue={values.screenShareUrl}
-            {...p}
-          />
-        )}
-      </PsField>
-      <PsField
-        id="linkedUid"
-        label="Linked schedule (optional)"
-        errors={errors.linkedUid}
-        hint="Another schedule's 10-digit ID. Copy it from that schedule's details."
-      >
-        {(p) => (
-          <PsInput
-            name="linkedUid"
-            autoComplete="off"
-            spellCheck={false}
-            inputMode="numeric"
-            maxLength={20}
-            placeholder="e.g. 4829103756"
-            defaultValue={values.linkedUid}
-            className="font-mono"
-            {...p}
-          />
-        )}
-      </PsField>
+      <PsSwitch
+        id="screenShareRequired"
+        name="screenShareRequired"
+        label="Screen share required"
+        hint="When on, the Caller adds the screen share link. Turning it off removes their link."
+        defaultChecked={values.screenShareRequired === "on"}
+        className="rounded-lg border border-white/10 bg-gray-800/40 px-3 py-2.5"
+      />
+      <PsLinkedSchedulesField values={linkedValues} rowErrors={state?.linkedErrors} errors={errors.linkedUids} />
       <PsField id="note" label="Note (optional)" errors={errors.note}>
         {(p) => <PsTextarea name="note" rows={3} maxLength={NOTE_MAX} defaultValue={values.note} {...p} />}
       </PsField>

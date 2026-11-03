@@ -6,6 +6,7 @@ import { PsUserProfile } from "@/features/admin/components/ps-user-profile";
 import { PsUserTable } from "@/features/admin/components/ps-user-table";
 import { ADMIN_USERS_PATH, USER_PARAM, USER_STATUS_FILTERS, type UserStatusFilter } from "@/features/admin/constants";
 import { requireSuperAdmin } from "@/features/auth/dal";
+import { listGroups } from "@/features/groups/queries";
 import { getUserDetails, listUsers } from "@/features/users/queries";
 
 export const metadata: Metadata = { title: "Users · Admin" };
@@ -27,10 +28,12 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
   const filter = USER_STATUS_FILTERS.find((f) => f === params.status) ?? "all";
   const selectedId = typeof params[USER_PARAM] === "string" && ObjectId.isValid(params[USER_PARAM]) ? params[USER_PARAM] : null;
 
-  const [users, selected] = await Promise.all([
+  const [users, selected, groups] = await Promise.all([
     listUsers(),
     selectedId ? getUserDetails(new ObjectId(selectedId)) : null,
+    listGroups(),
   ]);
+  const groupNames = Object.fromEntries(groups.map((g) => [g.id, g.name]));
   const counts: Record<UserStatusFilter, number> = {
     all: users.length,
     inactive: users.filter((u) => !u.active).length,
@@ -59,7 +62,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
 
       <div className="mt-4">
         {shown.length > 0 ? (
-          <PsUserTable users={shown} currentUserId={admin.id} profileHref={(id) => usersHref(filter, id)} />
+          <PsUserTable users={shown} currentUserId={admin.id} profileHref={(id) => usersHref(filter, id)} groupNames={groupNames} />
         ) : (
           <p className="rounded-2xl border border-dashed border-white/10 px-4 py-12 text-center text-sm text-gray-400">
             {filter === "inactive" ? "No accounts are waiting for activation." : "No accounts here yet."}
@@ -69,7 +72,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
 
       {selected && (
         <PsModal title="User profile" closeHref={usersHref(filter)}>
-          <PsUserProfile user={selected} isSelf={selected.id === admin.id} />
+          <PsUserProfile user={selected} isSelf={selected.id === admin.id} groups={groups} />
         </PsModal>
       )}
     </div>

@@ -12,7 +12,7 @@ before starting work, and add a new summary when the user asks to save the chat 
 - Every React component file is named `ps-<name>.tsx` in kebab-case, e.g. `ps-button.tsx`, `ps-sign-in-form.tsx`.
 - Each exports a named component `Ps<Name>` in PascalCase, e.g. `PsButton`, `PsSignInForm`. No default exports.
 - Where components live:
-  - `src/components/ui/`: basic reusable building blocks (`PsButton`, `PsIconButton`, `PsInput`, `PsPasswordInput`, `PsTextarea`, `PsPhoneInput`, `PsField`, `PsFormField`, `PsAlert`, `PsBadge`, `PsAvatar`, `PsChip`, `PsSection`, `PsEmptyState`, `PsSelect`, `PsDialog`, `PsModal`, `PsTable`). They have no data fetching and no feature knowledge.
+  - `src/components/ui/`: basic reusable building blocks (`PsButton`, `PsIconButton`, `PsInput`, `PsPasswordInput`, `PsTextarea`, `PsPhoneInput`, `PsField`, `PsFormField`, `PsAlert`, `PsBadge`, `PsAvatar`, `PsChip`, `PsSection`, `PsEmptyState`, `PsSelect`, `PsSwitch`, `PsDialog`, `PsModal`, `PsTable`). They have no data fetching and no feature knowledge.
   - **Every table uses `PsTable`** (`ps-table.tsx`) and its parts (`PsTableHead`, `PsTableBody`, `PsTableRow`, `PsTableHeaderCell`, `PsTableCell`, `PsTableRowLink`), never a raw `<table>`.
     - `hideBelow="md"` hides a column on smaller screens; give its header cell the same value.
     - `grow` makes the main column take the leftover width and truncate long text.
@@ -82,21 +82,40 @@ src/
 
 ### Schedules (`src/features/schedules/`)
 
-- These are the events on the calendar (e.g. interviews), stored in `ps_schedules`. **Each member sees and changes only their own**: every query and mutation filters by `userId`, and the owner id is never sent to the browser (`toSchedule()`).
+- These are the events on the calendar (e.g. interviews), stored in `ps_schedules`.
+- **Each schedule belongs to a group** (`groupId`; `userId` is its creator). The group's members share one calendar. Every query and mutation filters by `groupId`, and no user or group ids are sent to the browser (`toSchedule()`).
+- **Who can do what** is decided by `calendarAccess(user, requestedGroupId?)` in `access.ts`. Pages, actions and route handlers must use it.
+
+  | `mode` | Who | Can do |
+  |---|---|---|
+  | `"manage"` | Profile Manager (role 1) in a group | Everything on their group's schedules (any PM's): create, edit, drag, delete |
+  | `"call"` | Caller (role 2) in a group | See every field (read-only); fill in the caller fields with `saveCallerFields` |
+  | `"view"` | Super-admin | See any group's calendar read-only (`?group=<id>`, group picker in the toolbar) |
+  | `"none"` | Anyone else, or a PM/Caller without a group | No calendar; the page shows why |
+
+  - Every action re-checks the mode, so hidden buttons are never the only guard.
+  - The grid's `editable` prop turns off drag, click-to-create and resize for anyone who isn't a manager.
 - **Fields:**
-  - Required: `title`, `start` / `end`, `clientCompany`, `interviewer`, `meetingUrl`, `resumeUrl`, `jobDescriptionUrl`.
-  - Optional (stored as `null` when empty): `screenShareUrl`, `linkedUid`, `note`.
+  - Required (set by the PM): `title`, `start` / `end`, `clientCompany`, `interviewer`, `meetingUrl`, `resumeUrl`, `jobDescriptionUrl`.
+  - Optional (stored as `null` when empty): `note` (the PM's). `linkedUids` is a list (empty when none).
+  - **Screen share:** the PM sets only the `screenShareRequired` switch (`PsSwitch`). The Caller adds `screenShareUrl`, and only while it's required. Turning it off clears the link. Older schedules with a link count as required.
+  - **`callerNote`** ("Note (Caller)") is written by Callers. The PM, the founder and Callers all see it.
   - Older schedules may lack `meetingUrl`. `Schedule.meetingUrl` is then `null` and shows "—"; Edit requires it.
 - **Schedule ID (`uid`):** every schedule has a unique **10-digit** ID (e.g. `"4829103756"`, a string; `SCHEDULE_UID_PATTERN`), the ID members see.
-  - It's shown in the details with a Copy button, and it's what "Linked schedule" takes.
+  - It's shown in the details with a Copy button, and it's what "Linked schedules" takes.
   - It's a random number set on create (`newScheduleUid()`). On a rare repeat, the unique index rejects it and a new one is drawn (`isDuplicateUid`).
-  - Older schedules (no ID, or an earlier long UUID) get a 10-digit ID when first read (`withUids` in `queries.ts`). Links to the old ID are moved to the new one. `listSchedules` does a full pass once per member per server process.
+  - Older schedules (no ID, or an earlier long UUID) get a 10-digit ID when first read (`withUids` in `queries.ts`). Links to the old ID are moved to the new one. `upgradeOlderSchedules` also does a full pass once per group per server process. It moves schedules made before groups existed into their creator's group.
   - It has a unique index. Keep the database `_id` (`Schedule.id`) for actions and internal use; members never see it.
-- **Linked schedule:** `linkedUid` is the `uid` of another of the member's own schedules.
-  - `saveSchedule` checks it exists, is theirs, and isn't the schedule itself; other members' IDs get the same "doesn't exist" error. Spaces and dashes are ignored ("482 910 3756").
-  - Reads fill in `Schedule.linked` (title and times) with `withLinks()`.
-  - Deleting a schedule clears links to it.
-  - In the details, clicking the linked schedule loads it by ID from `GET /api/schedules/[uid]` (owner only, 404 otherwise; it may be in another week). It opens in the same dialog, with "Back to …" (a stack in `DialogState.back`).
+- **Linked schedules:** `linkedUids` is a **list** of other schedules' `uid`s in the same group, in the order entered, at most `LINKS_MAX`.
+  - **Older data:** some schedules have a single `linkedUid`. It's read as a one-item list (`linkedUidsOf()`) and removed on the next save.
+  - **Form:** `PsLinkedSchedulesField` shows one ID input per row, all named `linkedUids`. Each row has a remove (×) button, and **Add one** adds a row.
+    - The action reads the rows with `formData.getAll("linkedUids")`, because `Object.fromEntries` keeps only one.
+    - Empty rows and repeats are dropped. Spaces and dashes are ignored ("482 910 3756").
+  - **Checks:** `saveSchedule` checks every row at once, for format and for whether it's another schedule in the group (not itself). Other groups' IDs get the same "doesn't exist" error.
+    - It returns `linkedErrors` (one per row, shown under that row) and `linkedValues` (to refill the rows).
+  - **Reads** fill in `Schedule.linked` (title and times, in order) with `withLinks()`.
+  - **Deleting** a schedule removes it from every list (`$pull`).
+  - **In the details,** "Linked schedules" lists them all. Clicking one loads it by ID from `GET /api/schedules/[uid]` (same group only, 404 otherwise; it may be in another week). It opens in the same dialog, with "Back to …" (a stack in `DialogState.back`).
   - Links must be `http(s)` (`scheduleSchema`), and `safeUrl()` checks them again before rendering. Links open in a new tab with `rel="noopener noreferrer"`.
 - **Time:** `start` / `end` are exact moments (UTC `Date`s).
   - The form has a **Time zone** field (`PsTimeZoneSelect variant="field"`), which starts on the calendar's zone. It sends `date`, `from`, `to` and `timeZone`; `scheduleSchema` turns them into moments with `zonedToUtc`.
@@ -104,9 +123,17 @@ src/
   - Edit reopens the schedule in its own zone. The details show its own zone first, plus the calendar's zone when they differ.
   - Changing the zone in the form keeps the typed wall times.
   - The calendar shows them in the chosen zone, so changing zone moves the blocks. A block crossing midnight is drawn on both days.
-- **Reads:** the calendar changes weeks in the browser, so it loads schedules from `GET /api/schedules?from&to` (`useSchedules`), not from the page. That route returns 401 when signed out and allows at most `SCHEDULE_RANGE_MAX_DAYS`.
-- **Writes:** `saveSchedule` creates, or updates when the form has a `scheduleId`; `removeSchedule` deletes (after the confirm popup). The calendar then calls `reload()`.
-- **UI:** Create is a toolbar button on `sm`+ and a floating button on phones. Clicking a block opens `PsScheduleDetails` with Edit and Delete.
+- **Reads:** the calendar changes weeks in the browser, so it loads schedules from `GET /api/schedules?from&to[&group]` (`useSchedules`), not from the page.
+  - That route returns 401 when signed out and 403 without a calendar, and allows at most `SCHEDULE_RANGE_MAX_DAYS`.
+  - Only super-admins' `group` is honoured.
+- **Writes** (managers only): `saveSchedule` creates, or updates when the form has a `scheduleId`. `removeSchedule` deletes (after the confirm popup) and `reschedule` saves drags. Callers use `saveCallerFields` (`PsCallerForm` in the details). The calendar then calls `reload()`.
+- **UI:** Create (managers only) is a toolbar button on `sm`+ and a floating button on phones. Clicking a block opens `PsScheduleDetails`, which shows every field to everyone; managers also get Edit and Delete, and Callers get the caller form.
+
+### Groups (`src/features/groups/`)
+
+- Groups live in `ps_groups` (`name`, unique ignoring case via `nameKey`). Each user has one group (`UserDoc.groupId`, or null; `PublicUser.groupId`), and a group's members share its calendar.
+- Super-admins manage groups at `/admin/groups` (`PsGroupManager`): New group and Rename open a `PsDialog` popup (`PsGroupForm`), and Delete asks first. Only empty groups (no members, no schedules) can be deleted.
+- A user's group is set in their profile popup at `/admin/users` (`PsUserGroupForm`, `setUserGroup`). The user list shows each member's group under their role.
   - **Drag to create** (Google style, in `PsCalendarTimeGrid`): dragging up or down in a day with a mouse or pen draws a preview snapped to 15 minutes (`DRAG_STEP`). Releasing opens the form with that day and range. Dragging near the top or bottom edge scrolls the hours.
   - A plain click or tap opens the form for 1 hour at the half hour clicked. Touch drags still scroll the grid.
   - A press that starts on a block never creates one, even if released on empty space.
@@ -129,13 +156,13 @@ src/
 
 ### Roles and account activation
 
-- `UserDoc.role` is a number from `ROLES` in `src/features/users/roles.ts`, starting at 0. **0 is the founder (super-admin).** New accounts get `role: null` ("No role") until one is given. To add a role, add it to `ROLES` with the next number and give it a label in `ROLE_LABELS`.
-- Check permissions with the helpers in `roles.ts` (`isSuperAdmin(role)`) or `PublicUser.isSuperAdmin`, never by comparing raw numbers in pages.
+- `UserDoc.role` is a number from `ROLES` in `src/features/users/roles.ts`, starting at 0. **0 is the founder (super-admin), 1 is Profile Manager (makes and manages their group's schedules), 2 is Caller (sees their group's calendar, fills in the screen share link when required and "Note (Caller)").** See the Schedules section for exactly what each can do. New accounts get `role: null` ("No role") until one is given. To add a role, add it to `ROLES` with the next number and give it a label in `ROLE_LABELS`.
+- Check permissions with the helpers in `roles.ts` (`isSuperAdmin`, `isProfileManager`, `isCaller`), `PublicUser.isSuperAdmin` or `calendarAccess()`, never by comparing raw numbers in pages.
 - New accounts start with `active: false`. Sign-up then creates no session and sends the user to `/signin`, and sign-in is refused (only after the password matched) until a super-admin activates the account. Documents without `active` count as inactive (`isActive()` in `features/users/queries.ts`).
 - `getCurrentUser()` returns null for inactive accounts, and deactivating an account deletes all its sessions, so access ends immediately.
 - If no founder exists, `ensureFounder()` (run on sign-up and sign-in) makes the **oldest** account the founder and activates it. On a new database, the first sign-up becomes the founder.
 - Admin pages live under `/admin` (`src/features/admin/`). Only super-admins see the left-panel **Admin** button, which opens a popup menu. Its links are `ADMIN_NAV_ITEMS` (`features/admin/constants.ts`), so add new admin pages there. `/admin` itself redirects to the first one.
-- `/admin/users` lists every account with Activate / Deactivate buttons. Clicking a row opens the full profile in a `PsModal` (`?user=<id>`), where the role can be changed and the account deleted (after the confirm popup). Deleting removes the user, their sessions and avatar file. Founders can't be deleted (change their role first). Super-admins can't change their own role, deactivate or delete themselves, so one always remains.
+- `/admin/users` lists every account with Activate / Deactivate buttons. Clicking a row opens the full profile in a `PsModal` (`?user=<id>`), where the role and group can be changed and the account deleted (after the confirm popup). Deleting removes the user, their sessions and avatar file. Founders can't be deleted (change their role first). Super-admins can't change their own role, deactivate or delete themselves, so one always remains.
 - Admin pages, actions and route handlers must call `requireSuperAdmin()` (`features/auth/dal.ts`), which returns a 404 for everyone else. Super-admin accounts can't be deactivated from there.
 
 ### Required profile (`src/features/profile/`)

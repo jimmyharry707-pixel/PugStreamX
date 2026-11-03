@@ -31,6 +31,8 @@ export type UserDoc = {
   role: number | null;
   /** New accounts start inactive and can't sign in until a super-admin activates them. */
   active: boolean;
+  /** The user's group (`ps_groups`), set by a super-admin. Its members share a calendar. */
+  groupId?: ObjectId | null;
   /** Missing until the user completes their profile. */
   profile?: UserProfile;
   createdAt: Date;
@@ -56,6 +58,8 @@ export type PublicUser = {
   role: number | null;
   /** Role 0 (founder): may open the Admin page and activate accounts. */
   isSuperAdmin: boolean;
+  /** The user's group id, or null. */
+  groupId: string | null;
 };
 
 /** One row of the Admin page's account list. */

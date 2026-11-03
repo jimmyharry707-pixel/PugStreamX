@@ -7,12 +7,18 @@
 export const ROLES = {
   /** Founder and super-admin: sees the Admin pages, activates accounts and assigns roles. */
   founder: 0,
+  /** Makes and manages the schedules in their group's calendar. */
+  profileManager: 1,
+  /** Sees their group's calendar; adds the screen share link (when required) and a caller note. */
+  caller: 2,
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
 const ROLE_LABELS: Record<Role, string> = {
   [ROLES.founder]: "Founder",
+  [ROLES.profileManager]: "Profile Manager",
+  [ROLES.caller]: "Caller",
 };
 
 export function roleLabel(role: number | null): string {
@@ -33,4 +39,14 @@ export const ROLE_OPTIONS: { value: Role | null; label: string }[] = [
 /** Super-admins can see the Admin pages, activate or deactivate accounts and change roles. */
 export function isSuperAdmin(role: number | null): boolean {
   return role === ROLES.founder;
+}
+
+/** Profile Managers create, edit, move and delete their group's schedules. */
+export function isProfileManager(role: number | null): boolean {
+  return role === ROLES.profileManager;
+}
+
+/** Callers see their group's schedules and fill in the caller fields. */
+export function isCaller(role: number | null): boolean {
+  return role === ROLES.caller;
 }

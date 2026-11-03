@@ -9,6 +9,7 @@ export const COLLECTIONS = {
   users: "ps_users",
   sessions: "ps_sessions",
   schedules: "ps_schedules",
+  groups: "ps_groups",
 } as const satisfies Record<string, `ps_${string}`>;
 
 export type CollectionKey = keyof typeof COLLECTIONS;
@@ -37,6 +38,8 @@ export const INDEXES: Record<CollectionKey, IndexDescription[]> = {
     { key: { role: 1 } },
     // The Admin page lists accounts newest first.
     { key: { createdAt: -1 } },
+    // A group's members (calendar sharing, member counts).
+    { key: { groupId: 1 } },
   ],
   sessions: [
     { key: { userId: 1 } },
@@ -46,9 +49,16 @@ export const INDEXES: Record<CollectionKey, IndexDescription[]> = {
   schedules: [
     // The calendar loads one member's schedules for a week.
     { key: { userId: 1, start: 1 } },
+    // A group's calendar: its schedules for a week.
+    { key: { groupId: 1, start: 1 } },
     // Schedule IDs are unique; finding one by ID (and linked schedules) uses this.
     { key: { uid: 1 }, unique: true, partialFilterExpression: { uid: { $exists: true } } },
-    // Clearing links to a deleted schedule.
-    { key: { userId: 1, linkedUid: 1 } },
+    // Removing a deleted schedule from other schedules' links.
+    { key: { userId: 1, linkedUids: 1 } },
+    { key: { groupId: 1, linkedUids: 1 } },
+  ],
+  groups: [
+    // Group names are unique ignoring case.
+    { key: { nameKey: 1 }, unique: true },
   ],
 };
