@@ -62,6 +62,12 @@ export type CallerInput = { screenShareUrl: string | null; callerNote: string | 
 /** The Caller form's buttons: Save (the link, before the interview), Done, Undo done. */
 export type CallerIntent = "save" | "done" | "reopen";
 
+/**
+ * The Profile Manager who made a schedule, as shown on it (no user id). `color` (1 to
+ * PM_COLORS) is theirs in the calendar: `--color-pm-<color>`.
+ */
+export type ScheduleOwner = { fullName: string; displayName: string; avatarUrl: string; color: number };
+
 /** Just enough of a linked schedule to show and open it. */
 export type LinkedSchedule = { uid: string; title: string; start: string; end: string };
 
@@ -81,6 +87,8 @@ export type Schedule = Omit<ScheduleInput, "start" | "end" | "timeZone" | "meeti
   doneAt: string | null;
   /** The schedules `linkedUids` point to, in order (any that no longer exist are left out). */
   linked: LinkedSchedule[];
+  /** The Profile Manager who made it (a group can have several), or null if their account is gone. */
+  profileManager: ScheduleOwner | null;
 };
 
 /**

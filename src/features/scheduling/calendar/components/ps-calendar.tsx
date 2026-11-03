@@ -35,9 +35,11 @@ function toEvents(schedule: Schedule, timeZone: string): CalendarEvent[] {
     id: schedule.id,
     title: schedule.title,
     time: formatTimeRange(new Date(schedule.start), new Date(schedule.end), timeZone),
-    detail: schedule.clientCompany,
+    // The client, and which of the group's Profile Managers made it.
+    detail: [schedule.clientCompany, schedule.profileManager && `PM ${schedule.profileManager.displayName}`].filter(Boolean).join(" · "),
     done: !!schedule.doneAt,
     techSupport: schedule.techSupportRequired,
+    color: schedule.profileManager?.color,
   };
   if (isSameDay(start.day, end.day)) return [{ ...base, key: schedule.id, day: start.day, start: start.minutes, end: end.minutes }];
   return [

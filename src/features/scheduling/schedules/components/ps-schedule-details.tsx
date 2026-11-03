@@ -2,6 +2,7 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import { PsAlert } from "@/components/ui/ps-alert";
+import { PsAvatar } from "@/components/ui/ps-avatar";
 import { PsBadge } from "@/components/ui/ps-badge";
 import { PsButton } from "@/components/ui/ps-button";
 import { timeZoneLabel } from "@/features/scheduling/calendar/time-zone";
@@ -11,6 +12,18 @@ import { formatScheduleDate, formatShortDate, formatShortDateTime, formatTimeRan
 import type { CalendarMode, Schedule } from "../types";
 import { useStarted } from "../use-started";
 import { PsCallerForm } from "./ps-caller-form";
+
+/** Background classes for the Profile Manager colors (written out so Tailwind finds them). */
+const PM_DOT: Record<number, string> = {
+  1: "bg-pm-1",
+  2: "bg-pm-2",
+  3: "bg-pm-3",
+  4: "bg-pm-4",
+  5: "bg-pm-5",
+  6: "bg-pm-6",
+  7: "bg-pm-7",
+  8: "bg-pm-8",
+};
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -144,6 +157,28 @@ export function PsScheduleDetails({
       <dl className="divide-y divide-white/5 rounded-xl border border-white/10 bg-gray-950/40 px-4">
         <Row label="Schedule ID">
           <ScheduleId uid={schedule.uid} />
+        </Row>
+        {/* Who made it: a group can have several Profile Managers. */}
+        <Row label="Profile Manager">
+          {schedule.profileManager ? (
+            <span data-profile-manager className="flex min-w-0 items-center gap-2">
+              <PsAvatar name={schedule.profileManager.fullName} src={schedule.profileManager.avatarUrl} />
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5 text-gray-100">
+                  <span className="truncate">{schedule.profileManager.fullName}</span>
+                  {/* Their color on the calendar. */}
+                  <span
+                    data-pm-dot={schedule.profileManager.color}
+                    title="Their color on the calendar"
+                    className={`size-2.5 shrink-0 rounded-full ${PM_DOT[schedule.profileManager.color] ?? "bg-event-400"}`}
+                  />
+                </span>
+                <span className="block truncate text-xs text-gray-500">@{schedule.profileManager.displayName}</span>
+              </span>
+            </span>
+          ) : (
+            <span className="text-gray-500">Former member</span>
+          )}
         </Row>
         {/* The Caller clicks Done once the screen share link (if required) and their note are in. */}
         <Row label="Status">

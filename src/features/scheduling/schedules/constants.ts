@@ -33,5 +33,8 @@ export const SCHEDULES_API_PATH = "/api/schedules";
 /** Most schedules one schedule can link to. */
 export const LINKS_MAX = 20;
 
+/** How many Profile Manager colors there are (`--color-pm-1` … `--color-pm-8` in color.css). */
+export const PM_COLORS = 8;
+
 /** A schedule ID: 10 digits, e.g. "4829103756". */
 export const SCHEDULE_UID_PATTERN = /^[1-9]\d{9}$/;

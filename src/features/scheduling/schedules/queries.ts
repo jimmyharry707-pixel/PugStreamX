@@ -1,10 +1,12 @@
 import "server-only";
 import { randomInt } from "node:crypto";
 import { MongoServerError, ObjectId } from "mongodb";
+import { avatarUrl } from "@/features/account/profile/constants";
 import type { UserDoc } from "@/features/account/users/types";
 import { getCollection } from "@/lib/db/client";
-import { SCHEDULE_UID_PATTERN } from "./constants";
-import type { LinkedSchedule, Schedule, ScheduleDoc } from "./types";
+import { ROLES } from "@/features/account/users/roles";
+import { PM_COLORS, SCHEDULE_UID_PATTERN } from "./constants";
+import type { LinkedSchedule, Schedule, ScheduleDoc, ScheduleOwner } from "./types";
 
 // Every read is for one group's calendar (`groupId`); callers decide access (access.ts).
 
@@ -13,7 +15,7 @@ export function linkedUidsOf(doc: ScheduleDoc): string[] {
   return doc.linkedUids ?? (doc.linkedUid ? [doc.linkedUid] : []);
 }
 
-export function toSchedule(doc: ScheduleDoc, linked: LinkedSchedule[] = []): Schedule {
+export function toSchedule(doc: ScheduleDoc, linked: LinkedSchedule[] = [], profileManager: ScheduleOwner | null = null): Schedule {
   return {
     id: doc._id.toHexString(),
     uid: doc.uid,
@@ -35,6 +37,7 @@ export function toSchedule(doc: ScheduleDoc, linked: LinkedSchedule[] = []): Sch
     note: doc.note,
     callerNote: doc.callerNote ?? null,
     doneAt: doc.doneAt?.toISOString() ?? null,
+    profileManager,
   };
 }
 
@@ -110,13 +113,42 @@ async function upgradeOlderSchedules(groupId: ObjectId) {
 const TECH_SUPPORT = { techSupportRequired: true } as const;
 
 /**
- * Schedules with their linked schedules (from the same group) filled in. With `techSupportOnly`
- * (Developers), only linked schedules that need a tech supporter are included.
+ * The Profile Managers who made `docs`, by user id (hex): their name, photo and color only.
+ * Colors follow the group's Profile Managers, oldest account first, so the first PM_COLORS of
+ * them never share one and each keeps theirs. Anyone else (e.g. a PM who left the group) gets a
+ * color from their id.
+ */
+async function ownersOf(groupId: ObjectId, docs: ScheduleDoc[]): Promise<Map<string, ScheduleOwner>> {
+  const ids = [...new Map(docs.map((d) => [d.userId.toHexString(), d.userId])).values()];
+  if (ids.length === 0) return new Map();
+  const users = await getCollection<UserDoc>("users");
+  const [found, groupPms] = await Promise.all([
+    users.find({ _id: { $in: ids }, "profile.completedAt": { $exists: true } }, { projection: { profile: 1 } }).toArray(),
+    users.find({ groupId, role: ROLES.profileManager }, { projection: { _id: 1 } }).sort({ createdAt: 1, _id: 1 }).toArray(),
+  ]);
+  const order = new Map(groupPms.map((u, i) => [u._id.toHexString(), i]));
+  const colorOf = (id: string) => ((order.get(id) ?? parseInt(id.slice(-6), 16)) % PM_COLORS) + 1;
+  return new Map(
+    found.map((u) => {
+      const id = u._id.toHexString();
+      const p = u.profile!;
+      return [id, { fullName: p.fullName, displayName: p.displayName, avatarUrl: avatarUrl(p.avatarId.toHexString()), color: colorOf(id) }];
+    }),
+  );
+}
+
+/**
+ * Schedules with their linked schedules (from the same group) and the Profile Manager who made
+ * them filled in. With `techSupportOnly` (Developers), only linked schedules that need a tech
+ * supporter are included.
  */
 export async function withLinks(groupId: ObjectId, docs: ScheduleDoc[], techSupportOnly = false): Promise<Schedule[]> {
   const uids = [...new Set(docs.flatMap(linkedUidsOf))];
   const schedules = await getCollection<ScheduleDoc>("schedules");
-  const linkedDocs = uids.length ? await schedules.find({ groupId, uid: { $in: uids }, ...(techSupportOnly ? TECH_SUPPORT : {}) }).toArray() : [];
+  const [linkedDocs, owners] = await Promise.all([
+    uids.length ? schedules.find({ groupId, uid: { $in: uids }, ...(techSupportOnly ? TECH_SUPPORT : {}) }).toArray() : [],
+    ownersOf(groupId, docs),
+  ]);
   const byUid = new Map(
     linkedDocs.map((d) => [d.uid, { uid: d.uid, title: d.title, start: d.start.toISOString(), end: d.end.toISOString() }]),
   );
@@ -124,6 +156,7 @@ export async function withLinks(groupId: ObjectId, docs: ScheduleDoc[], techSupp
     toSchedule(
       doc,
       linkedUidsOf(doc).flatMap((uid) => byUid.get(uid) ?? []),
+      owners.get(doc.userId.toHexString()) ?? null,
     ),
   );
 }

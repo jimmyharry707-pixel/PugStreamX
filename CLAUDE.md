@@ -93,14 +93,15 @@ src/
 ### Schedules (`src/features/scheduling/schedules/`)
 
 - These are the events on the calendar (e.g. interviews), stored in `ps_schedules`.
-- **Each schedule belongs to a group** (`groupId`; `userId` is its creator). The group's members share one calendar. Every query and mutation filters by `groupId`, and no user or group ids are sent to the browser (`toSchedule()`).
+- **Each schedule belongs to a group** (`groupId`; `userId` is its creator). A group can have several Profile Managers, so every schedule shows **the PM who made it**: `Schedule.profileManager` (full name, display name, photo; never their id; null if the account is gone, shown as "Former member"). `withLinks()` fills it in for every read. It's a "Profile Manager" row in the details, and "Company · PM name" on the block (blocks of an hour or more show that third line).
+  - **Each PM has their own color:** `profileManager.color` (1 to `PM_COLORS` = 8) picks `--color-pm-<n>` (color.css). The server numbers the group's Profile Managers oldest account first, so the first 8 never share a color and everyone in the group sees the same ones. A creator who's no longer a PM in the group gets a color from their id. Blocks set `data-pm-color` and `.ps-calendar-time-grid__block` mixes their background, border and text from that one color; the details show a dot in it next to the PM's name. The group's members share one calendar. Every query and mutation filters by `groupId`, and no user or group ids are sent to the browser (`toSchedule()`).
 - **Who can do what** is decided by `calendarAccess(user, requestedGroupId?)` in `access.ts`. Pages, actions and route handlers must use it.
 
   | `mode` | Who | Can do |
   |---|---|---|
   | `"manage"` | Profile Manager (role 1) in a group | Everything on their group's schedules (any PM's): create, edit, drag, delete |
   | `"call"` | Caller (role 2) in a group | See every field (read-only); fill in the caller fields with `saveCallerFields` |
-  | `"support"` | Developer (role 4) in a group | See only the group's schedules with **Tech supporter needed**, read-only (every field; no forms) |
+  | `"support"` | Developer (role 3) in a group | See only the group's schedules with **Tech supporter needed**, read-only (every field; no forms) |
   | `"view"` | Super-admin | See any group's calendar read-only (`?group=<id>`, group picker in the toolbar) |
   | `"none"` | Anyone else, or a PM/Caller without a group | No calendar; the page shows why |
 
@@ -163,7 +164,7 @@ src/
     - The grid reports an `EventChange` (days and minutes). `PsCalendar` turns it into exact times in the calendar's zone (moves keep wall-clock time, so daylight saving can't shift them) and shows the change at once (`patch()`).
     - It then saves with the `reschedule` action (`rescheduleSchema`: owner only, end after start, at most 24 h). If saving fails, `reload()` puts the block back.
     - The schedule keeps its own `timeZone`. Touch doesn't drag blocks; it scrolls.
-- Blocks use the `event` color role. Overlapping blocks share the column width (`layoutEvents` in `features/scheduling/calendar/event-layout.ts`).
+- Blocks use their Profile Manager's `pm-<n>` color (the `event` color when there's none). Overlapping blocks share the column width (`layoutEvents` in `features/scheduling/calendar/event-layout.ts`).
 - To add a schedule field: add it to `SCHEDULE_FIELDS`, `scheduleSchema`, `ScheduleDoc` / `ScheduleInput` / `toSchedule`, `PsScheduleForm`, `PsScheduleDetails`, and `editDefaults` in `ps-calendar.tsx`.
 
 ### Chat (`src/features/communication/chat/`)
@@ -203,7 +204,7 @@ src/
 
 ### Roles and account activation
 
-- `UserDoc.role` is a number from `ROLES` in `src/features/account/users/roles.ts`, starting at 0. **0 is the founder (super-admin), 1 is Profile Manager (makes and manages their group's schedules), 2 is Caller (sees their group's calendar, fills in the screen share link when required and "Note (Caller)"), 4 is Developer (sees their group's schedules that need a tech supporter, read-only; 3 is not used).** See the Schedules section for exactly what each can do. New accounts get `role: null` ("No role") until one is given. To add a role, add it to `ROLES` with the next number and give it a label in `ROLE_LABELS`.
+- `UserDoc.role` is a number from `ROLES` in `src/features/account/users/roles.ts`, starting at 0. **0 is the founder (super-admin), 1 is Profile Manager (makes and manages their group's schedules), 2 is Caller (sees their group's calendar, fills in the screen share link when required and "Note (Caller)"), 3 is Developer (sees their group's schedules that need a tech supporter, read-only).** See the Schedules section for exactly what each can do. New accounts get `role: null` ("No role") until one is given. To add a role, add it to `ROLES` with the next number and give it a label in `ROLE_LABELS`.
 - Check permissions with the helpers in `roles.ts` (`isSuperAdmin`, `isProfileManager`, `isCaller`, `isDeveloper`), `PublicUser.isSuperAdmin` or `calendarAccess()`, never by comparing raw numbers in pages.
 - New accounts start with `active: false`. Sign-up then creates no session and sends the user to `/signin`, and sign-in is refused (only after the password matched) until a super-admin activates the account. Documents without `active` count as inactive (`isActive()` in `features/account/users/queries.ts`).
 - `getCurrentUser()` returns null for inactive accounts, and deactivating an account deletes all its sessions, so access ends immediately.
@@ -243,7 +244,7 @@ src/
 ### Colors (`src/static/css/base/color.css`)
 
 - All colors are defined there and nowhere else. Tailwind's own palette is switched off (`--color-*: initial`), so `zinc`, `amber`, `red`, etc. **don't exist**. A class like `bg-zinc-800` silently does nothing.
-- Use the role names, each a full 50–950 scale:
+- Use the role names, each a full 50–950 scale (except `pm`):
 
   | Role | Use for |
   |---|---|
@@ -256,6 +257,7 @@ src/
   | `info` | notices, in progress |
   | `event` | schedule blocks in the calendar |
   | `weekend` | Saturdays and Sundays in the calendar |
+  | `pm` | one color per Profile Manager in the calendar: `pm-1` … `pm-8` (single colors, not 50–950 scales) |
 
   Besides those: `white` and `black` (for overlays, e.g. `bg-white/10`, `bg-black/60`), plus `background` / `foreground` for the page.
 - In JSX use utilities: `bg-gray-900`, `text-brand-400`, `border-danger-500/40`.

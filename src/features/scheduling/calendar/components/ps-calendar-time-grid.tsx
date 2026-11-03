@@ -36,6 +36,8 @@ export type CalendarEvent = {
   done?: boolean;
   /** Shows a wrench: a tech supporter is needed. */
   techSupport?: boolean;
+  /** Its Profile Manager's color (1 to 8, `--color-pm-<n>`); the event color without one. */
+  color?: number;
 };
 
 /**
@@ -273,6 +275,7 @@ export function PsCalendarTimeGrid({
                       type="button"
                       aria-label={`${event.title}, ${event.time}${event.detail ? `, ${event.detail}` : ""}${event.techSupport ? ", tech supporter needed" : ""}${event.done ? ", done" : ""}`}
                       data-done={event.done || undefined}
+                      data-pm-color={event.color}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (!skipEventClick.current) onEventClick(event.id);
@@ -334,7 +337,8 @@ export function PsCalendarTimeGrid({
                         } as CSSProperties
                       }
                       className={cn(
-                        "ps-calendar-time-grid__event flex flex-col overflow-hidden rounded-md border-l-2 border-event-400 bg-event-900/80 px-1.5 py-0.5 text-left text-[11px] leading-tight text-event-50 transition hover:bg-event-800 focus-visible:outline-2 focus-visible:outline-brand-400",
+                        // Colors: ps-calendar-time-grid__block (from its PM's color).
+                        "ps-calendar-time-grid__event ps-calendar-time-grid__block flex flex-col overflow-hidden rounded-md border-l-2 px-1.5 py-0.5 text-left text-[11px] leading-tight transition focus-visible:outline-2 focus-visible:outline-brand-400",
                         // While it's being dragged, the original stays as a faint outline.
                         eventPreview?.key === event.key && "opacity-40",
                       )}
@@ -355,8 +359,9 @@ export function PsCalendarTimeGrid({
                           </span>
                         )}
                       </span>
-                      {minutes >= 45 && <span className="truncate text-event-200">{event.time}</span>}
-                      {minutes >= 75 && event.detail && <span className="truncate text-event-200">{event.detail}</span>}
+                      {minutes >= 45 && <span className="ps-calendar-time-grid__meta truncate">{event.time}</span>}
+                      {/* From an hour up there is room for a third line: the client and the PM. */}
+                      {minutes >= 60 && event.detail && <span className="ps-calendar-time-grid__meta truncate">{event.detail}</span>}
                       {/* Drag the bottom edge to change when it ends. */}
                       {editable && <span aria-hidden className="ps-calendar-time-grid__resize" />}
                     </button>

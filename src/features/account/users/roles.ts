@@ -11,8 +11,8 @@ export const ROLES = {
   profileManager: 1,
   /** Sees their group's calendar; adds the screen share link (when required) and a caller note. */
   caller: 2,
-  /** Sees their group's schedules that need a tech supporter, read-only. (3 is not used.) */
-  developer: 4,
+  /** Sees their group's schedules that need a tech supporter, read-only. */
+  developer: 3,
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];

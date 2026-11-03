@@ -71,6 +71,33 @@
     min-height: 1rem;
   }
 
+  /* A schedule block's colors come from one color: its Profile Manager's (data-pm-color, 1 to 8),
+     or the event color. Background, border and text are mixed from it. */
+  .ps-calendar-time-grid__block {
+    --ps-event-color: var(--color-event-400);
+    border-left-color: var(--ps-event-color);
+    background-color: color-mix(in oklab, var(--ps-event-color) 32%, var(--color-gray-950));
+    color: color-mix(in oklab, var(--ps-event-color) 8%, var(--color-white));
+  }
+
+  .ps-calendar-time-grid__block:hover {
+    background-color: color-mix(in oklab, var(--ps-event-color) 45%, var(--color-gray-950));
+  }
+
+  /* The time and detail lines. */
+  .ps-calendar-time-grid__meta {
+    color: color-mix(in oklab, var(--ps-event-color) 35%, var(--color-white));
+  }
+
+  .ps-calendar-time-grid__block[data-pm-color="1"] { --ps-event-color: var(--color-pm-1); }
+  .ps-calendar-time-grid__block[data-pm-color="2"] { --ps-event-color: var(--color-pm-2); }
+  .ps-calendar-time-grid__block[data-pm-color="3"] { --ps-event-color: var(--color-pm-3); }
+  .ps-calendar-time-grid__block[data-pm-color="4"] { --ps-event-color: var(--color-pm-4); }
+  .ps-calendar-time-grid__block[data-pm-color="5"] { --ps-event-color: var(--color-pm-5); }
+  .ps-calendar-time-grid__block[data-pm-color="6"] { --ps-event-color: var(--color-pm-6); }
+  .ps-calendar-time-grid__block[data-pm-color="7"] { --ps-event-color: var(--color-pm-7); }
+  .ps-calendar-time-grid__block[data-pm-color="8"] { --ps-event-color: var(--color-pm-8); }
+
   /* The grab strip along an event's bottom edge, for changing when it ends. */
   .ps-calendar-time-grid__resize {
     position: absolute;
