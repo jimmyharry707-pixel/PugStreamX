@@ -57,6 +57,9 @@ export type ScheduleInput = Pick<
 /** The fields a Caller fills in. */
 export type CallerInput = { screenShareUrl: string | null; callerNote: string | null };
 
+/** The Caller form's buttons: Save (the link, before the interview), Done, Undo done. */
+export type CallerIntent = "save" | "done" | "reopen";
+
 /** Just enough of a linked schedule to show and open it. */
 export type LinkedSchedule = { uid: string; title: string; start: string; end: string };
 

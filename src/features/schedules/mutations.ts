@@ -33,6 +33,9 @@ export async function createSchedule(groupId: ObjectId, userId: ObjectId, input:
   }
 }
 
+/** Moved to end in the future: the interview hasn't happened yet, so it's no longer done. */
+const notDoneIfAhead = (end: Date) => (end.getTime() > Date.now() ? { doneAt: null } : {});
+
 /** A Profile Manager's edit. Null if the schedule isn't in the group. */
 export async function updateSchedule(groupId: ObjectId, scheduleId: ObjectId, input: ScheduleInput): Promise<Schedule | null> {
   const schedules = await getCollection<ScheduleDoc>("schedules");
@@ -40,7 +43,7 @@ export async function updateSchedule(groupId: ObjectId, scheduleId: ObjectId, in
     { _id: scheduleId, groupId },
     {
       // Screen share no longer required: the Caller's link goes too.
-      $set: { ...input, ...(input.screenShareRequired ? {} : { screenShareUrl: null }), updatedAt: new Date() },
+      $set: { ...input, ...(input.screenShareRequired ? {} : { screenShareUrl: null }), ...notDoneIfAhead(input.end), updatedAt: new Date() },
       // The earlier single link is replaced by the list.
       $unset: { linkedUid: "" },
     },
@@ -50,22 +53,22 @@ export async function updateSchedule(groupId: ObjectId, scheduleId: ObjectId, in
 }
 
 /**
- * A Caller's fields, and when it was marked done (`doneAt`; null while not done). The screen
- * share link is only saved while the schedule requires one. Null if the schedule isn't in the group.
+ * Changes some of a Caller's fields, and when it was marked done (`doneAt`; null while not done).
+ * Fields left out stay as they are. The screen share link is only saved while the schedule
+ * requires one (as of `current`, the schedule the caller just read). Null if the schedule isn't
+ * in the group.
  */
 export async function updateCallerFields(
   groupId: ObjectId,
-  scheduleId: ObjectId,
-  input: CallerInput,
-  doneAt: Date | null,
+  current: ScheduleDoc,
+  changes: Partial<CallerInput> & { doneAt?: Date | null },
 ): Promise<Schedule | null> {
   const schedules = await getCollection<ScheduleDoc>("schedules");
-  const current = await schedules.findOne({ _id: scheduleId, groupId });
-  if (!current) return null;
+  const { screenShareUrl, ...rest } = changes;
   const required = current.screenShareRequired ?? !!current.screenShareUrl;
   const doc = await schedules.findOneAndUpdate(
-    { _id: scheduleId, groupId },
-    { $set: { callerNote: input.callerNote, doneAt, ...(required ? { screenShareUrl: input.screenShareUrl } : {}), updatedAt: new Date() } },
+    { _id: current._id, groupId },
+    { $set: { ...rest, ...(required && screenShareUrl !== undefined ? { screenShareUrl } : {}), updatedAt: new Date() } },
     { returnDocument: "after" },
   );
   return doc ? (await withLinks(groupId, [doc]))[0] : null;
@@ -76,7 +79,7 @@ export async function rescheduleSchedule(groupId: ObjectId, scheduleId: ObjectId
   const schedules = await getCollection<ScheduleDoc>("schedules");
   const doc = await schedules.findOneAndUpdate(
     { _id: scheduleId, groupId },
-    { $set: { start, end, updatedAt: new Date() } },
+    { $set: { start, end, ...notDoneIfAhead(end), updatedAt: new Date() } },
     { returnDocument: "after" },
   );
   return doc ? (await withLinks(groupId, [doc]))[0] : null;

@@ -8,7 +8,7 @@ import { calendarAccess } from "./access";
 import type { CallerField, ScheduleField } from "./constants";
 import { createSchedule, deleteSchedule, rescheduleSchedule, updateCallerFields, updateSchedule } from "./mutations";
 import { findGroupUids, findScheduleDoc } from "./queries";
-import type { Schedule } from "./types";
+import type { CallerIntent, Schedule } from "./types";
 import { callerSchema, normalizeUid, rescheduleSchema, scheduleSchema } from "./validation";
 
 // Profile Managers change their group's schedules; Callers only fill in the caller fields.
@@ -86,12 +86,21 @@ export async function saveSchedule(_prev: ScheduleFormState, formData: FormData)
   return { saved: await createSchedule(groupId, new ObjectId(user.id), parsed.data) };
 }
 
-export type CallerFormState = (NonNullable<FormState<CallerField>> & { saved?: Schedule; message?: string }) | undefined;
+export type CallerFormState =
+  | (NonNullable<FormState<CallerField>> & {
+      saved?: Schedule;
+      message?: string;
+      /** The button that saved, so the form shows `message` only where it belongs. */
+      intent?: CallerIntent;
+    })
+  | undefined;
 
 /**
- * Saves a Caller's fields: the screen share link (while required) and the caller note. With the
- * Done button it also marks the schedule done, which needs both filled in; a done schedule keeps
- * needing them until "Undo done". Callers only.
+ * A Caller's part, which follows the interview (`end`):
+ * - before it ends: Save the screen share link (only while required);
+ * - after it ends: Done saves "Note (Caller)" (required) and marks the schedule done; Undo done
+ *   ("reopen") takes that back.
+ * Callers only.
  */
 export async function saveCallerFields(_prev: CallerFormState, formData: FormData): Promise<CallerFormState> {
   const { groupId } = await groupFor("call");
@@ -100,24 +109,28 @@ export async function saveCallerFields(_prev: CallerFormState, formData: FormDat
 
   const parsed = callerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failed(z.flattenError(parsed.error).fieldErrors);
-  const { scheduleId, intent, ...input } = parsed.data;
+  const { scheduleId, intent, screenShareUrl, callerNote } = parsed.data;
   const current = await findScheduleDoc(groupId, new ObjectId(scheduleId));
   if (!current) return failed({ form: ["This schedule no longer exists."] });
+  const ended = current.end.getTime() <= Date.now();
 
-  const done = intent === "done" || (intent === "save" && !!current.doneAt);
-  if (done) {
-    const why = intent === "done" ? "before marking it done" : "while it's done";
-    const errors: NonNullable<NonNullable<CallerFormState>["errors"]> = {};
-    if ((current.screenShareRequired ?? !!current.screenShareUrl) && !input.screenShareUrl) {
-      errors.screenShareUrl = [`Add the screen share link ${why}.`];
-    }
-    if (!input.callerNote) errors.callerNote = [`Add your note ${why}.`];
-    if (Object.keys(errors).length) return failed(errors);
+  let changes: Parameters<typeof updateCallerFields>[2];
+  if (intent === "reopen") {
+    changes = { doneAt: null };
+  } else if (intent === "done") {
+    if (!ended) return failed({ form: ["You can mark it done after the interview."] });
+    if (!callerNote) return failed({ callerNote: ["Add your note before marking it done."] });
+    // Already done (a repeated Done): keep when it was first marked.
+    changes = { callerNote, doneAt: current.doneAt ?? new Date() };
+  } else {
+    if (ended) return failed({ form: ["The interview is over: add your note and click Done."] });
+    if (!(current.screenShareRequired ?? !!current.screenShareUrl)) return failed({ form: ["This schedule doesn't need a screen share link."] });
+    changes = { screenShareUrl };
   }
 
-  const saved = await updateCallerFields(groupId, current._id, input, done ? (current.doneAt ?? new Date()) : null);
+  const saved = await updateCallerFields(groupId, current, changes);
   if (!saved) return failed({ form: ["This schedule no longer exists."] });
-  return { saved, message: intent === "done" ? "Marked as done." : intent === "reopen" ? "No longer done." : "Saved." };
+  return { saved, intent, message: intent === "done" ? "Marked as done." : intent === "reopen" ? "No longer done." : "Saved." };
 }
 
 /** Saves new times for a schedule moved or resized by dragging (ISO strings). Profile Managers only. */

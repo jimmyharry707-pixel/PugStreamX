@@ -8,24 +8,34 @@ import { PsInput } from "@/components/ui/ps-input";
 import { PsTextarea } from "@/components/ui/ps-textarea";
 import { saveCallerFields } from "../actions";
 import { NOTE_MAX, URL_MAX } from "../constants";
-import type { Schedule } from "../types";
-
-type Intent = "save" | "done" | "reopen";
+import type { CallerIntent as Intent, Schedule } from "../types";
+import { useEnded } from "../use-ended";
 
 const PENDING: Record<Intent, string> = { save: "Saving…", done: "Marking done…", reopen: "Undoing…" };
 
+/** The part of the form each button's success message belongs to (it's hidden elsewhere). */
+const MESSAGE_PHASE: Record<Intent, Phase> = { save: "before", done: "done", reopen: "after" };
+
+type Phase = "before" | "after" | "done";
+
 /**
- * A Caller's part of a schedule, in its details: the screen share link (only while the Profile
- * Manager requires one) and "Note (Caller)". The link goes in before the interview, the note
- * after; then **Done** marks the schedule done (both must be filled in), shown on the calendar.
- * "Undo done" takes that back. Calls `onSaved` with the updated schedule.
+ * A Caller's part of a schedule, in its details. It follows the interview (the schedule's end):
+ * - before it ends: only the screen share link (when the Profile Manager requires one) and Save;
+ * - after it ends: only "Note (Caller)" and **Done**, which marks the schedule done (shown on the
+ *   calendar);
+ * - once done: Undo done.
+ * The server (`saveCallerFields`) enforces the same. Calls `onSaved` with the updated schedule.
  */
 export function PsCallerForm({ schedule, onSaved }: { schedule: Schedule; onSaved: (schedule: Schedule) => void }) {
   const [state, action, pending] = useActionState(saveCallerFields, undefined);
   const [intent, setIntent] = useState<Intent>("save");
+  // An open form switches to the note the moment the interview ends.
+  const ended = useEnded(schedule.end);
   const values = state?.values ?? { screenShareUrl: schedule.screenShareUrl ?? "", callerNote: schedule.callerNote ?? "" };
   const errors = state?.errors ?? {};
-  const done = !!schedule.doneAt;
+  const phase: Phase = schedule.doneAt ? "done" : ended ? "after" : "before";
+  // E.g. "Saved." from adding the link isn't shown under the note once the interview ends.
+  const message = state?.message && state.intent && MESSAGE_PHASE[state.intent] === phase ? state.message : null;
 
   useEffect(() => {
     if (state?.saved) onSaved(state.saved);
@@ -34,42 +44,50 @@ export function PsCallerForm({ schedule, onSaved }: { schedule: Schedule; onSave
   }, [state]);
 
   // Each button sends its `intent`; remember which one, for its "…ing" label.
-  const button = (value: Intent, label: string, variant: "primary" | "secondary") => (
-    <PsButton type="submit" name="intent" value={value} variant={variant} size="sm" disabled={pending} onClick={() => setIntent(value)} className="min-w-24">
-      {pending && intent === value ? PENDING[value] : label}
-    </PsButton>
+  const button = (value: Intent, label: string, variant: "primary" | "secondary" = "primary") => (
+    <div className="flex justify-end">
+      <PsButton type="submit" name="intent" value={value} variant={variant} size="sm" disabled={pending} onClick={() => setIntent(value)} className="min-w-24">
+        {pending && intent === value ? PENDING[value] : label}
+      </PsButton>
+    </div>
   );
 
   return (
-    <form action={action} noValidate aria-label="Caller" className="space-y-4 rounded-xl border border-white/10 bg-gray-950/40 p-4">
+    <form action={action} noValidate aria-label="Caller" data-phase={phase} className="space-y-4 rounded-xl border border-white/10 bg-gray-950/40 p-4">
       <input type="hidden" name="scheduleId" value={schedule.id} />
       <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Caller</p>
       {errors.form && <PsAlert>{errors.form[0]}</PsAlert>}
-      {state?.message && !errors.form && <PsAlert variant="success">{state.message}</PsAlert>}
-      {schedule.screenShareRequired && (
-        <PsField id="callerScreenShareUrl" label="Screen share link" errors={errors.screenShareUrl} hint="Required for this schedule. Add it before the interview.">
-          {(p) => (
-            <PsInput name="screenShareUrl" type="url" inputMode="url" maxLength={URL_MAX} placeholder="https://" defaultValue={values.screenShareUrl} {...p} />
-          )}
-        </PsField>
-      )}
-      <PsField id="callerNote" label="Note (Caller)" errors={errors.callerNote} hint={done ? undefined : "Add it after the interview, then click Done."}>
-        {(p) => <PsTextarea name="callerNote" rows={3} maxLength={NOTE_MAX} defaultValue={values.callerNote} {...p} />}
-      </PsField>
-      {/* Enter in a field clicks the first button in the markup, so Save always comes first there. */}
-      <div className="flex flex-wrap justify-end gap-2">
-        {done ? (
+      {message && !errors.form && <PsAlert variant="success">{message}</PsAlert>}
+
+      {phase === "before" &&
+        (schedule.screenShareRequired ? (
           <>
-            {button("save", "Save", "primary")}
-            <span className="order-first">{button("reopen", "Undo done", "secondary")}</span>
+            <PsField id="callerScreenShareUrl" label="Screen share link" errors={errors.screenShareUrl} hint="Required for this schedule. Add it before the interview.">
+              {(p) => (
+                <PsInput name="screenShareUrl" type="url" inputMode="url" maxLength={URL_MAX} placeholder="https://" defaultValue={values.screenShareUrl} {...p} />
+              )}
+            </PsField>
+            {button("save", "Save")}
           </>
         ) : (
-          <>
-            {button("save", "Save", "secondary")}
-            {button("done", "Done", "primary")}
-          </>
-        )}
-      </div>
+          <p className="text-sm text-gray-400">Nothing to add before the interview. When it ends, add your note here and click Done.</p>
+        ))}
+
+      {phase === "after" && (
+        <>
+          <PsField id="callerNote" label="Note (Caller)" errors={errors.callerNote} hint="What are some things to keep in mind for the next stage?">
+            {(p) => <PsTextarea name="callerNote" rows={3} maxLength={NOTE_MAX} defaultValue={values.callerNote} {...p} />}
+          </PsField>
+          {button("done", "Done")}
+        </>
+      )}
+
+      {phase === "done" && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-gray-400">You marked this done.</p>
+          {button("reopen", "Undo done", "secondary")}
+        </div>
+      )}
     </form>
   );
 }

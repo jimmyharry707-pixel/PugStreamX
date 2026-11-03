@@ -100,8 +100,14 @@ src/
   - Optional (stored as `null` when empty): `note` (the PM's). `linkedUids` is a list (empty when none).
   - **Screen share:** the PM sets only the `screenShareRequired` switch (`PsSwitch`). The Caller adds `screenShareUrl`, and only while it's required. Turning it off clears the link. Older schedules with a link count as required.
   - **`callerNote`** ("Note (Caller)") is written by Callers. The PM, the founder and Callers all see it.
-  - **Done (`doneAt`):** the Caller adds the screen share link (if required) before the interview and their note after it, then clicks **Done** (`intent=done` in `saveCallerFields`).
-    - Done needs both filled in, and a done schedule keeps needing them on later saves. **Undo done** (`intent=reopen`) clears `doneAt`.
+  - **Done (`doneAt`):** the Caller form (`PsCallerForm`) follows the schedule's `end`. Its `data-phase` is `before`, `after` or `done`.
+    - **Before the interview ends:** only the screen share link (when required) and Save. Without a required link there's nothing to fill in; a line says so.
+    - **After it ends:** only "Note (Caller)" and **Done** (`intent=done`). Done needs the note, saves it and sets `doneAt`.
+    - **Once done:** only **Undo done** (`intent=reopen`), which clears `doneAt` and keeps the note.
+    - `saveCallerFields` enforces the same with the server clock: links only before the end, the note and Done only after.
+    - The form switches at the exact end time (`useEnded()` in `use-ended.ts`), not on a minute tick. Success messages only show in the state they came from (`CallerFormState.intent`).
+    - After the interview, a required link that was never added shows "Not added" in grey, not the red "Required".
+    - A repeated Done keeps the first `doneAt`. A PM moving a schedule so it ends in the future (Edit or drag) clears `doneAt`.
     - `Schedule.doneAt` is an ISO string or null. Everyone sees it: a green "Done" pill on the calendar block (`CalendarEvent.done`) and a Status row in the details. PM edits leave it as is.
   - Older schedules may lack `meetingUrl`. `Schedule.meetingUrl` is then `null` and shows "—"; Edit requires it.
 - **Schedule ID (`uid`):** every schedule has a unique **10-digit** ID (e.g. `"4829103756"`, a string; `SCHEDULE_UID_PATTERN`), the ID members see.
