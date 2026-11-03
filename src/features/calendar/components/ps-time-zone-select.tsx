@@ -9,11 +9,32 @@ import { deviceTimeZone, timeZoneName, timeZoneOffset, timeZoneOptions } from ".
 type Item = { value: string; name: string; hint?: string; offset: string };
 
 /**
- * Time zone picker: a small pill showing the zone's offset ("GMT+8"; just a globe on phones)
- * that opens a popup with a search box and the list of zones. Type a city, region or offset
- * ("shang", "+8"); arrows move, Enter picks, Esc closes. `value` "" means the device's zone.
+ * Time zone picker that opens a popup with a search box and the list of zones. Type a city,
+ * region or offset ("shang", "+8"); arrows move, Enter picks, Esc closes.
+ *
+ * - `variant="pill"` (toolbar): a small pill showing the offset ("GMT+8"; a globe on phones).
+ *   Offers "Device time zone", whose `value` is "".
+ * - `variant="field"` (forms, inside PsField): looks like an input, shows the full zone and
+ *   submits it as `name`. Always a real zone; no "Device" option.
  */
-export function PsTimeZoneSelect({ value, onChange }: { value: string; onChange: (timeZone: string) => void }) {
+export function PsTimeZoneSelect({
+  value,
+  onChange,
+  variant = "pill",
+  name,
+  ...control
+}: {
+  value: string;
+  onChange: (timeZone: string) => void;
+  variant?: "pill" | "field";
+  /** Form field name (field variant). */
+  name?: string;
+  /** From PsField. */
+  id?: string;
+  "aria-invalid"?: true;
+  "aria-describedby"?: string;
+}) {
+  const field = variant === "field";
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -27,19 +48,21 @@ export function PsTimeZoneSelect({ value, onChange }: { value: string; onChange:
   const current = value || device;
   const zones = useMemo(() => timeZoneOptions(new Date()), []);
 
-  // "Device time zone" first (while it matches the search), then the matching zones.
+  // "Device time zone" first (pill only, while it matches the search), then the matching zones.
   const items = useMemo((): Item[] => {
     const q = query.trim().toLowerCase();
     const matches = q ? zones.filter((z) => z.search.includes(q)) : zones;
+    if (field) return matches;
     const deviceItem = { value: "", name: "Device time zone", hint: timeZoneName(device), offset: timeZoneOffset(device, new Date(), "long") };
     const deviceMatches = !q || "device".includes(q) || zones.find((z) => z.value === device)?.search.includes(q);
     return deviceMatches ? [deviceItem, ...matches] : matches;
-  }, [zones, query, device]);
+  }, [zones, query, device, field]);
 
   const openPopup = () => {
     setQuery("");
     // Start on the current choice.
-    setActive(Math.max(0, value ? zones.findIndex((z) => z.value === value) + 1 : 0));
+    const index = zones.findIndex((z) => z.value === value);
+    setActive(field ? Math.max(0, index) : value ? index + 1 : 0);
     setOpen(true);
   };
 
@@ -76,46 +99,74 @@ export function PsTimeZoneSelect({ value, onChange }: { value: string; onChange:
       PageUp: Math.max(active - 8, 0),
     };
     if (e.key in moves) setActive(moves[e.key]);
-    else if (e.key === "Enter" && items[active]) pick(items[active].value);
-    else if (e.key === "Escape") close(true);
-    else return;
+    else if (e.key === "Enter") {
+      // Never submit a surrounding form from the search box.
+      if (items[active]) pick(items[active].value);
+    } else if (e.key === "Escape") {
+      // Close only this popup, not a dialog it sits in.
+      e.stopPropagation();
+      close(true);
+    } else return;
     e.preventDefault();
   };
 
   const listId = `${id}-list`;
   const optionId = (index: number) => `${id}-option-${index}`;
+  const chevron = (className: string) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className={cn("shrink-0 transition", open && "rotate-180", className)} aria-hidden>
+      <path d="m7 10 5 5 5-5" />
+    </svg>
+  );
 
   return (
-    <div ref={rootRef} className="relative shrink-0">
-      <button
-        ref={buttonRef}
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-label={`Time zone: ${timeZoneName(current)} (${timeZoneOffset(current, now, "long")})`}
-        title={`Time zone: ${timeZoneName(current)}`}
-        onClick={() => (open ? close(false) : openPopup())}
-        className={cn(
-          "flex h-8 items-center gap-1.5 rounded-full border border-white/10 bg-gray-900 px-2 text-xs text-gray-300 transition hover:bg-gray-800 hover:text-white focus-visible:outline-2 focus-visible:outline-brand-400 sm:px-3",
-          open && "bg-gray-800 text-white",
-        )}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="size-4 shrink-0" aria-hidden>
-          <circle cx="12" cy="12" r="9" />
-          <path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z" />
-        </svg>
-        <span className="whitespace-nowrap max-sm:hidden">{timeZoneOffset(current, now, "short")}</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className={cn("size-3.5 shrink-0 text-gray-500 transition max-sm:hidden", open && "rotate-180")} aria-hidden>
-          <path d="m7 10 5 5 5-5" />
-        </svg>
-      </button>
+    <div ref={rootRef} className={cn("relative", field ? "w-full" : "shrink-0")}>
+      {field && name && <input type="hidden" name={name} value={value} />}
+      {field ? (
+        <button
+          ref={buttonRef}
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          onClick={() => (open ? close(false) : openPopup())}
+          {...control}
+          className="flex w-full min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-gray-800 px-3 py-2 text-left text-sm outline-none transition hover:border-white/20 focus-visible:border-brand-400 aria-invalid:border-danger-500"
+        >
+          <span className="shrink-0 tabular-nums text-gray-400">{timeZoneOffset(current, now, "long")}</span>
+          <span className="min-w-0 flex-1 truncate">{timeZoneName(current)}</span>
+          {chevron("size-4 text-gray-400")}
+        </button>
+      ) : (
+        <button
+          ref={buttonRef}
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-label={`Time zone: ${timeZoneName(current)} (${timeZoneOffset(current, now, "long")})`}
+          title={`Time zone: ${timeZoneName(current)}`}
+          onClick={() => (open ? close(false) : openPopup())}
+          className={cn(
+            "flex h-8 items-center gap-1.5 rounded-full border border-white/10 bg-gray-900 px-2 text-xs text-gray-300 transition hover:bg-gray-800 hover:text-white focus-visible:outline-2 focus-visible:outline-brand-400 sm:px-3",
+            open && "bg-gray-800 text-white",
+          )}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="size-4 shrink-0" aria-hidden>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z" />
+          </svg>
+          <span className="whitespace-nowrap max-sm:hidden">{timeZoneOffset(current, now, "short")}</span>
+          {chevron("size-3.5 text-gray-500 max-sm:hidden")}
+        </button>
+      )}
 
       {open && (
         // Layering: above snackbars (100), level with the topbar menus (110).
         <div
           role="dialog"
           aria-label="Choose a time zone"
-          className="absolute right-0 top-full z-[110] mt-2 flex w-80 max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-white/10 bg-gray-900 shadow-2xl"
+          className={cn(
+            "absolute top-full z-[110] mt-2 flex flex-col rounded-2xl border border-white/10 bg-gray-900 shadow-2xl",
+            field ? "inset-x-0 shadow-black/60" : "right-0 w-80 max-w-[calc(100vw-2rem)]",
+          )}
         >
           <div className="border-b border-white/10 p-3">
             <PsInput

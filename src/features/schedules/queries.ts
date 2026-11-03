@@ -9,6 +9,7 @@ export function toSchedule(doc: ScheduleDoc): Schedule {
     title: doc.title,
     start: doc.start.toISOString(),
     end: doc.end.toISOString(),
+    timeZone: doc.timeZone ?? null,
     clientCompany: doc.clientCompany,
     interviewer: doc.interviewer,
     resumeUrl: doc.resumeUrl,

@@ -88,7 +88,10 @@ src/
   - Optional (stored as `null` when empty): `screenShareUrl`, `note`.
   - Links must be `http(s)` (`scheduleSchema`), and `safeUrl()` checks them again before rendering. Links open in a new tab with `rel="noopener noreferrer"`.
 - **Time:** `start` / `end` are exact moments (UTC `Date`s).
-  - The form sends `date`, `from`, `to` plus the calendar's `timeZone`, and `scheduleSchema` turns them into moments with `zonedToUtc`.
+  - The form has a **Time zone** field (`PsTimeZoneSelect variant="field"`), which starts on the calendar's zone. It sends `date`, `from`, `to` and `timeZone`; `scheduleSchema` turns them into moments with `zonedToUtc`.
+  - The zone is stored with the schedule (`ScheduleDoc.timeZone`; missing on older ones, so fall back to the calendar's).
+  - Edit reopens the schedule in its own zone. The details show its own zone first, plus the calendar's zone when they differ.
+  - Changing the zone in the form keeps the typed wall times.
   - The calendar shows them in the chosen zone, so changing zone moves the blocks. A block crossing midnight is drawn on both days.
 - **Reads:** the calendar changes weeks in the browser, so it loads schedules from `GET /api/schedules?from&to` (`useSchedules`), not from the page. That route returns 401 when signed out and allows at most `SCHEDULE_RANGE_MAX_DAYS`.
 - **Writes:** `saveSchedule` creates, or updates when the form has a `scheduleId`; `removeSchedule` deletes (after the confirm popup). The calendar then calls `reload()`.

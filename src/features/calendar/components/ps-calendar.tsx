@@ -11,13 +11,13 @@ import { useSchedules } from "@/features/schedules/use-schedules";
 import { snackbar } from "@/features/snackbar/store";
 import { zonedTime, zonedToUtc } from "@/lib/utils/time-zone";
 import { addDays, isSameDay, parseDateKey, toDateKey, weekDays } from "../dates";
-import { deviceTimeZone, setTimeZoneSetting, timeZoneName, timeZoneOffset, useTimeZoneSetting } from "../time-zone";
+import { deviceTimeZone, setTimeZoneSetting, timeZoneOffset, useTimeZoneSetting } from "../time-zone";
 import { useNow } from "../use-now";
 import { PsCalendarTimeGrid, type CalendarEvent } from "./ps-calendar-time-grid";
 import { PsCalendarToolbar } from "./ps-calendar-toolbar";
 
 type DialogState =
-  | { mode: "create"; defaults: ScheduleFormDefaults }
+  | { mode: "create"; defaults: ScheduleFormDefaults & { timeZone: string } }
   | { mode: "view"; schedule: Schedule }
   | { mode: "edit"; schedule: Schedule };
 
@@ -84,12 +84,15 @@ export function PsCalendar() {
    * 9 AM on the week's first day when another week is shown).
    */
   const create = (day?: Date, minutes?: number) => {
-    if (!date || !zoned) return;
+    if (!date || !zoned || !timeZone) return;
     const days = weekDays(date);
     const onToday = days.some((d) => isSameDay(d, zoned.day));
     const target = day ?? (onToday ? zoned.day : days[0]);
     const from = minutes ?? (day || !onToday ? 9 * 60 : Math.min(Math.ceil(zoned.minutes / 60) * 60, 23 * 60));
-    setDialog({ mode: "create", defaults: { date: toDateKey(target), from: minutesToTime(from), to: minutesToTime(from + 60) } });
+    setDialog({
+      mode: "create",
+      defaults: { date: toDateKey(target), from: minutesToTime(from), to: minutesToTime(from + 60), timeZone },
+    });
   };
   // The key handler below reads the latest `create` without re-subscribing every render.
   const createRef = useRef(create);
@@ -118,7 +121,6 @@ export function PsCalendar() {
   // Today and the time zone are only known in the browser, so wait for them.
   if (!date || !zoned || !timeZone || timeZoneSetting === null) return <PsCalendarSkeleton />;
 
-  const zoneLabel = `${timeZoneOffset(timeZone, now!, "long")} (${timeZoneName(timeZone)})`;
   const events = schedules.flatMap((schedule) => toEvents(schedule, timeZone));
 
   const onSaved = (schedule: Schedule, created: boolean) => {
@@ -130,15 +132,17 @@ export function PsCalendar() {
     reload();
   };
 
-  /** The form's values for editing a schedule, in the chosen zone. */
-  const editDefaults = (schedule: Schedule): ScheduleFormDefaults => {
-    const start = zonedTime(new Date(schedule.start), timeZone);
-    const end = zonedTime(new Date(schedule.end), timeZone);
+  /** The form's values for editing a schedule, in the zone it was entered in. */
+  const editDefaults = (schedule: Schedule): ScheduleFormDefaults & { timeZone: string } => {
+    const zone = schedule.timeZone ?? timeZone;
+    const start = zonedTime(new Date(schedule.start), zone);
+    const end = zonedTime(new Date(schedule.end), zone);
     return {
+      timeZone: zone,
       title: schedule.title,
       date: toDateKey(start.day),
       from: minutesToTime(start.minutes),
-      // A schedule crossing midnight (only after changing time zone) is cut at the day's end.
+      // A schedule crossing midnight there (only older ones, saved without a zone) is cut at the day's end.
       to: minutesToTime(isSameDay(start.day, end.day) ? end.minutes : 23 * 60 + 59),
       clientCompany: schedule.clientCompany,
       interviewer: schedule.interviewer,
@@ -190,7 +194,6 @@ export function PsCalendar() {
           <PsScheduleDetails
             schedule={dialog.schedule}
             timeZone={timeZone}
-            zoneLabel={zoneLabel}
             onEdit={() => setDialog({ mode: "edit", schedule: dialog.schedule })}
             onDeleted={(message) => {
               setDialog(null);
@@ -209,8 +212,6 @@ export function PsCalendar() {
           <PsScheduleForm
             scheduleId={dialog.mode === "edit" ? dialog.schedule.id : undefined}
             defaults={dialog.mode === "edit" ? editDefaults(dialog.schedule) : dialog.defaults}
-            timeZone={timeZone}
-            zoneLabel={zoneLabel}
             onSaved={(schedule) => onSaved(schedule, dialog.mode === "create")}
             onCancel={() => setDialog(null)}
           />

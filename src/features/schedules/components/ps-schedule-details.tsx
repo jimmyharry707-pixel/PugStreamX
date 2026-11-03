@@ -3,6 +3,7 @@
 import { useState, useTransition, type ReactNode } from "react";
 import { PsAlert } from "@/components/ui/ps-alert";
 import { PsButton } from "@/components/ui/ps-button";
+import { timeZoneLabel } from "@/features/calendar/time-zone";
 import { confirm } from "@/features/confirm/store";
 import { removeSchedule } from "../actions";
 import { formatScheduleDate, formatTimeRange, safeUrl } from "../format";
@@ -27,17 +28,19 @@ function Link({ url }: { url: string | null }) {
   );
 }
 
-/** A schedule's details, with Edit and Delete (after the confirm popup). */
+/**
+ * A schedule's details, with Edit and Delete (after the confirm popup). The time is shown in
+ * the schedule's own zone and, when that differs, also in the calendar's `timeZone`.
+ */
 export function PsScheduleDetails({
   schedule,
   timeZone,
-  zoneLabel,
   onEdit,
   onDeleted,
 }: {
   schedule: Schedule;
+  /** The calendar's time zone. */
   timeZone: string;
-  zoneLabel: string;
   onEdit: () => void;
   onDeleted: (message: string) => void;
 }) {
@@ -45,6 +48,7 @@ export function PsScheduleDetails({
   const [pending, startTransition] = useTransition();
   const start = new Date(schedule.start);
   const end = new Date(schedule.end);
+  const ownZone = schedule.timeZone ?? timeZone;
 
   async function onDelete() {
     const ok = await confirm({
@@ -63,12 +67,20 @@ export function PsScheduleDetails({
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-gray-300">
-        {formatScheduleDate(start, timeZone)}
-        <br />
-        <span className="text-gray-100">{formatTimeRange(start, end, timeZone)}</span>
-        <span className="text-gray-500"> · {zoneLabel}</span>
-      </p>
+      <div className="space-y-2 text-sm text-gray-300">
+        <p>
+          {formatScheduleDate(start, ownZone)}
+          <br />
+          <span className="text-gray-100">{formatTimeRange(start, end, ownZone)}</span>
+          <span className="text-gray-500"> · {timeZoneLabel(ownZone, start)}</span>
+        </p>
+        {ownZone !== timeZone && (
+          <p className="text-xs text-gray-400">
+            In your calendar ({timeZoneLabel(timeZone, start)}): {formatScheduleDate(start, timeZone)},{" "}
+            {formatTimeRange(start, end, timeZone)}
+          </p>
+        )}
+      </div>
 
       <dl className="divide-y divide-white/5 rounded-xl border border-white/10 bg-gray-950/40 px-4">
         <Row label="Client company">{schedule.clientCompany}</Row>

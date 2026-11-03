@@ -28,8 +28,8 @@ const optional = <T extends z.ZodType>(schema: T) =>
 const time = (message: string) => z.string({ error: message }).regex(/^([01]\d|2[0-3]):[0-5]\d$/, message);
 
 /**
- * The schedule form. Date and times are typed in the calendar's time zone (`timeZone`) and
- * become exact `start` / `end` moments.
+ * The schedule form. Date and times are read in the chosen `timeZone` (kept with the schedule)
+ * and become exact `start` / `end` moments.
  */
 export const scheduleSchema = z
   .object({
@@ -37,7 +37,7 @@ export const scheduleSchema = z
     date: z.iso.date({ error: "Choose a date." }),
     from: time("Choose a start time."),
     to: time("Choose an end time."),
-    timeZone: z.string().refine(isValidTimeZone, "Unknown time zone. Reload the page and try again."),
+    timeZone: z.string({ error: "Choose a time zone." }).refine(isValidTimeZone, "Choose a time zone from the list."),
     clientCompany: requiredText("Enter the client company.", NAME_MAX),
     interviewer: requiredText("Enter the interviewer.", NAME_MAX),
     resumeUrl: link("Enter the resume link."),
@@ -53,8 +53,8 @@ export const scheduleSchema = z
     ),
   })
   .refine((v) => v.to > v.from, { path: ["to"], message: "End time must be after the start time." })
-  .transform(({ date, from, to, timeZone, ...rest }) => ({
+  .transform(({ date, from, to, ...rest }) => ({
     ...rest,
-    start: zonedToUtc(date, from, timeZone),
-    end: zonedToUtc(date, to, timeZone),
+    start: zonedToUtc(date, from, rest.timeZone),
+    end: zonedToUtc(date, to, rest.timeZone),
   }));

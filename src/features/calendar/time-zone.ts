@@ -72,6 +72,11 @@ export function timeZoneName(timeZone: string): string {
   return RENAMED[timeZone] ?? timeZone.replaceAll("_", " ");
 }
 
+/** "GMT+08:00 (Asia/Shanghai)" at a moment. */
+export function timeZoneLabel(timeZone: string, at: Date): string {
+  return `${timeZoneOffset(timeZone, at, "long")} (${timeZoneName(timeZone)})`;
+}
+
 function offsetMinutes(longOffset: string): number {
   const match = /GMT([+-])(\d{2}):(\d{2})/.exec(longOffset);
   return match ? (match[1] === "-" ? -1 : 1) * (Number(match[2]) * 60 + Number(match[3])) : 0;

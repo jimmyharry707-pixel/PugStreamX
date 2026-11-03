@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { PsAlert } from "@/components/ui/ps-alert";
 import { PsButton } from "@/components/ui/ps-button";
 import { PsField } from "@/components/ui/ps-field";
 import { PsFormField } from "@/components/ui/ps-form-field";
 import { PsInput } from "@/components/ui/ps-input";
 import { PsTextarea } from "@/components/ui/ps-textarea";
+import { PsTimeZoneSelect } from "@/features/calendar/components/ps-time-zone-select";
 import { saveSchedule } from "../actions";
 import { NAME_MAX, NOTE_MAX, TITLE_MAX, URL_MAX, type ScheduleField } from "../constants";
 import type { Schedule } from "../types";
@@ -14,27 +15,26 @@ import type { Schedule } from "../types";
 export type ScheduleFormDefaults = Partial<Record<ScheduleField, string>>;
 
 /**
- * Create or edit a schedule (edit when `scheduleId` is set). The date and times are in
- * `timeZone`, the calendar's zone, which `zoneLabel` names for the user.
+ * Create or edit a schedule (edit when `scheduleId` is set). The date and times are read in
+ * the chosen time zone, which starts as `defaults.timeZone` (the calendar's zone for a new
+ * schedule). Changing the zone keeps the typed times: "10:00" then means 10:00 there.
  */
 export function PsScheduleForm({
   scheduleId,
   defaults,
-  timeZone,
-  zoneLabel,
   onSaved,
   onCancel,
 }: {
   scheduleId?: string;
-  defaults: ScheduleFormDefaults;
-  timeZone: string;
-  zoneLabel: string;
+  /** Must include `timeZone`. */
+  defaults: ScheduleFormDefaults & { timeZone: string };
   onSaved: (schedule: Schedule) => void;
   onCancel: () => void;
 }) {
   const [state, formAction, pending] = useActionState(saveSchedule, undefined);
   const values = state?.values ?? defaults;
   const errors = state?.errors ?? {};
+  const [timeZone, setTimeZone] = useState(defaults.timeZone);
 
   useEffect(() => {
     if (state?.saved) onSaved(state.saved);
@@ -45,9 +45,7 @@ export function PsScheduleForm({
   return (
     <form action={formAction} noValidate className="space-y-4">
       {scheduleId && <input type="hidden" name="scheduleId" value={scheduleId} />}
-      <input type="hidden" name="timeZone" value={timeZone} />
       {errors.form && <PsAlert>{errors.form[0]}</PsAlert>}
-      {errors.timeZone && <PsAlert>{errors.timeZone[0]}</PsAlert>}
 
       <PsFormField label="Title" name="title" required maxLength={TITLE_MAX} defaultValue={values.title} errors={errors.title} />
 
@@ -58,7 +56,9 @@ export function PsScheduleForm({
         <PsFormField label="From" name="from" type="time" step={300} required defaultValue={values.from} errors={errors.from} />
         <PsFormField label="To" name="to" type="time" step={300} required defaultValue={values.to} errors={errors.to} />
       </div>
-      <p className="-mt-2 text-xs text-gray-500">Times are in {zoneLabel}.</p>
+      <PsField id="timeZone" label="Time zone" errors={errors.timeZone}>
+        {(p) => <PsTimeZoneSelect variant="field" name="timeZone" value={timeZone} onChange={setTimeZone} {...p} />}
+      </PsField>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <PsFormField
