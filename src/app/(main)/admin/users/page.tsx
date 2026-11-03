@@ -44,7 +44,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
   return (
     <div className="mx-auto w-full max-w-5xl p-4 sm:p-6 lg:p-8">
       <h1 className="text-2xl font-bold">Users</h1>
-      <p className="mt-1 text-sm text-zinc-400">
+      <p className="mt-1 text-sm text-gray-400">
         Every account on PugStreamX. New accounts can&apos;t sign in until you activate them. Click a row to see the full
         profile and change the role.
       </p>
@@ -61,7 +61,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
         {shown.length > 0 ? (
           <PsUserTable users={shown} currentUserId={admin.id} profileHref={(id) => usersHref(filter, id)} />
         ) : (
-          <p className="rounded-2xl border border-dashed border-white/10 px-4 py-12 text-center text-sm text-zinc-400">
+          <p className="rounded-2xl border border-dashed border-white/10 px-4 py-12 text-center text-sm text-gray-400">
             {filter === "inactive" ? "No accounts are waiting for activation." : "No accounts here yet."}
           </p>
         )}

@@ -2,34 +2,34 @@
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect } from "react";
-import { CALENDAR_VIEW_KEYS, CALENDAR_VIEWS, DEFAULT_CALENDAR_VIEW, type CalendarView } from "../constants";
-import { calendarTitle, parseDateKey, shiftDate, startOfDay, toDateKey, weekDays } from "../dates";
+import { addDays, parseDateKey, toDateKey, weekDays } from "../dates";
+import { deviceTimeZone, setTimeZoneSetting, timeZoneOffset, useTimeZoneSetting, zonedTime } from "../time-zone";
 import { useNow } from "../use-now";
-import { PsCalendarMonthView } from "./ps-calendar-month-view";
 import { PsCalendarTimeGrid } from "./ps-calendar-time-grid";
 import { PsCalendarToolbar } from "./ps-calendar-toolbar";
-import { PsMiniCalendar } from "./ps-mini-calendar";
 
 /**
- * Google-Calendar-style calendar with Day, Week and Month views and a small month calendar
- * on wide screens. The view and date live in the URL (`?view=week&date=2026-11-03`); without a
- * date it shows today. Moving around updates the URL in the browser only (no server request).
+ * Google-Calendar-style week calendar, using the full width. The title in its toolbar opens a
+ * month calendar popup for jumping to a week. The shown week lives in the URL
+ * (`?date=2026-11-03`, any day of that week); without a date it shows this week. Moving
+ * around updates the URL in the browser only (no server request).
  *
- * Keyboard shortcuts: T today, J / N next, K / P previous, D / W / M switch view.
+ * "Today" and the current-time line follow the time zone picked in the toolbar (remembered in
+ * this browser; the device's by default).
+ *
+ * Keyboard shortcuts: T this week, J / N next week, K / P previous week.
  */
 export function PsCalendar() {
   const searchParams = useSearchParams();
   const now = useNow();
-  const view = CALENDAR_VIEWS.find((v) => v === searchParams.get("view")) ?? DEFAULT_CALENDAR_VIEW;
-  const today = now && startOfDay(now);
-  const date = parseDateKey(searchParams.get("date")) ?? today;
+  const timeZoneSetting = useTimeZoneSetting();
+  const timeZone = timeZoneSetting === null ? null : timeZoneSetting || deviceTimeZone();
+  // "Today" and the time of day, in the chosen time zone.
+  const zoned = now && timeZone ? { ...zonedTime(now, timeZone), label: timeZoneOffset(timeZone, now, "short") } : null;
+  const date = parseDateKey(searchParams.get("date")) ?? zoned?.day ?? null;
 
-  const go = useCallback((nextView: CalendarView, nextDate: Date | null) => {
-    const params = new URLSearchParams();
-    if (nextView !== DEFAULT_CALENDAR_VIEW) params.set("view", nextView);
-    if (nextDate) params.set("date", toDateKey(nextDate));
-    const query = params.toString();
-    window.history.pushState(null, "", query ? `?${query}` : window.location.pathname);
+  const go = useCallback((nextDate: Date | null) => {
+    window.history.pushState(null, "", nextDate ? `?date=${toDateKey(nextDate)}` : window.location.pathname);
   }, []);
 
   useEffect(() => {
@@ -39,45 +39,30 @@ export function PsCalendar() {
       const target = e.target as HTMLElement;
       if (target.closest("input, textarea, select, [contenteditable=true], [role=dialog], [role=alertdialog]")) return;
       const key = e.key.toLowerCase();
-      const nextView = CALENDAR_VIEWS.find((v) => CALENDAR_VIEW_KEYS[v] === key);
-      if (key === "t") go(view, null);
-      else if (key === "j" || key === "n") go(view, shiftDate(view, date, 1));
-      else if (key === "k" || key === "p") go(view, shiftDate(view, date, -1));
-      else if (nextView) go(nextView, date);
+      if (key === "t") go(null);
+      else if (key === "j" || key === "n") go(addDays(date, 7));
+      else if (key === "k" || key === "p") go(addDays(date, -7));
       else return;
       e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [date, view, go]);
+  }, [date, go]);
 
-  // Today is only known in the browser (the user's time zone), so wait for it.
-  if (!date) return <PsCalendarSkeleton />;
-
-  const openDay = (day: Date) => go("day", day);
+  // Today and the time zone are only known in the browser, so wait for them.
+  if (!date || !zoned || timeZoneSetting === null) return <PsCalendarSkeleton />;
 
   return (
-    // Fills the screen below the 4rem topbar; the views scroll inside.
+    // Fills the space below the 4rem topbar; the hour grid scrolls inside.
     <div className="flex h-[calc(100dvh-4rem)] min-h-[32rem] flex-col">
       <PsCalendarToolbar
-        view={view}
-        title={calendarTitle(view, date)}
-        onToday={() => go(view, null)}
-        onStep={(step) => go(view, shiftDate(view, date, step))}
-        onView={(v) => go(v, date)}
+        date={date}
+        today={zoned.day}
+        onGo={go}
+        timeZone={timeZoneSetting}
+        onTimeZoneChange={setTimeZoneSetting}
       />
-      <div className="flex min-h-0 flex-1">
-        <aside aria-label="Date picker" className="hidden w-64 shrink-0 overflow-y-auto border-r border-white/10 p-4 xl:block">
-          <PsMiniCalendar selected={date} today={today} onSelect={(day) => go(view, day)} />
-        </aside>
-        <div className="flex min-w-0 flex-1 flex-col">
-          {view === "month" ? (
-            <PsCalendarMonthView date={date} today={today} onOpenDay={openDay} />
-          ) : (
-            <PsCalendarTimeGrid days={view === "week" ? weekDays(date) : [date]} now={now} onOpenDay={openDay} />
-          )}
-        </div>
-      </div>
+      <PsCalendarTimeGrid days={weekDays(date)} today={zoned.day} nowMinutes={zoned.minutes} zoneLabel={zoned.label} />
     </div>
   );
 }

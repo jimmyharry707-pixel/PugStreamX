@@ -7,10 +7,10 @@ type Size = "sm" | "md" | "lg";
 type StyleProps = { variant?: Variant; size?: Size };
 
 const variants: Record<Variant, string> = {
-  primary: "bg-amber-400 font-semibold text-zinc-950 hover:bg-amber-300",
-  secondary: "bg-zinc-800 text-zinc-100 hover:bg-zinc-700",
-  ghost: "text-zinc-300 hover:text-white",
-  danger: "bg-red-600 font-semibold text-white hover:bg-red-500",
+  primary: "bg-brand-400 font-semibold text-gray-950 hover:bg-brand-300",
+  secondary: "bg-gray-800 text-gray-100 hover:bg-gray-700",
+  ghost: "text-gray-300 hover:text-white",
+  danger: "bg-danger-600 font-semibold text-white hover:bg-danger-500",
 };
 
 const sizes: Record<Size, string> = {

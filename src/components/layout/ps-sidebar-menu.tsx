@@ -81,8 +81,8 @@ export function PsSidebarMenu({
           }
         }}
         className={cn(
-          "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition focus-visible:outline-2 focus-visible:outline-amber-400",
-          inMenu ? "bg-amber-400/10 font-medium text-amber-300" : "text-zinc-300 hover:bg-white/5 hover:text-white",
+          "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition focus-visible:outline-2 focus-visible:outline-brand-400",
+          inMenu ? "bg-brand-400/10 font-medium text-brand-300" : "text-gray-300 hover:bg-white/5 hover:text-white",
           open && !inMenu && "bg-white/5 text-white",
         )}
       >
@@ -94,7 +94,7 @@ export function PsSidebarMenu({
           stroke="currentColor"
           strokeWidth={2}
           strokeLinecap="round"
-          className={cn("ml-auto size-4 text-zinc-500 transition-transform", open && "rotate-180")}
+          className={cn("ml-auto size-4 text-gray-500 transition-transform", open && "rotate-180")}
           aria-hidden
         >
           <path d="m7 14 5-5 5 5" />
@@ -109,9 +109,9 @@ export function PsSidebarMenu({
           role="menu"
           aria-label={label}
           onKeyDown={onMenuKeyDown}
-          className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-xl border border-white/10 bg-zinc-900 p-1.5 shadow-2xl shadow-black/60"
+          className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-xl border border-white/10 bg-gray-900 p-1.5 shadow-2xl shadow-black/60"
         >
-          <p className="px-3 pb-1.5 pt-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">{label}</p>
+          <p className="px-3 pb-1.5 pt-1 text-[11px] font-medium uppercase tracking-wide text-gray-500">{label}</p>
           {items.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -123,7 +123,7 @@ export function PsSidebarMenu({
                 onClick={() => setOpen(false)}
                 className={cn(
                   "flex w-full items-center rounded-lg px-3 py-2 text-sm outline-none transition focus-visible:bg-white/10",
-                  active ? "font-medium text-amber-300" : "text-zinc-200 hover:bg-white/10",
+                  active ? "font-medium text-brand-300" : "text-gray-200 hover:bg-white/10",
                 )}
               >
                 {item.label}

@@ -7,11 +7,11 @@ import type { Snackbar, SnackbarType } from "../types";
 import "@/static/css/components/ps-snackbar.css";
 
 const styles: Record<SnackbarType, { container: string; icon: string; bar: string }> = {
-  default: { container: "border-white/10", icon: "text-zinc-300", bar: "bg-zinc-400" },
-  success: { container: "border-emerald-500/40", icon: "text-emerald-400", bar: "bg-emerald-400" },
-  info: { container: "border-sky-500/40", icon: "text-sky-400", bar: "bg-sky-400" },
-  warning: { container: "border-amber-500/40", icon: "text-amber-400", bar: "bg-amber-400" },
-  error: { container: "border-red-500/40", icon: "text-red-400", bar: "bg-red-400" },
+  default: { container: "border-white/10", icon: "text-gray-300", bar: "bg-gray-400" },
+  success: { container: "border-success-500/40", icon: "text-success-400", bar: "bg-success-400" },
+  info: { container: "border-info-500/40", icon: "text-info-400", bar: "bg-info-400" },
+  warning: { container: "border-warning-500/40", icon: "text-warning-400", bar: "bg-warning-400" },
+  error: { container: "border-danger-500/40", icon: "text-danger-400", bar: "bg-danger-400" },
 };
 
 const iconPaths: Record<SnackbarType, ReactNode> = {
@@ -62,7 +62,7 @@ export function PsSnackbar({ snackbar, onDismiss }: { snackbar: Snackbar; onDism
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
       className={cn(
-        "ps-snackbar pointer-events-auto relative overflow-hidden rounded-xl border bg-zinc-900/95 shadow-lg shadow-black/40 backdrop-blur",
+        "ps-snackbar pointer-events-auto relative overflow-hidden rounded-xl border bg-gray-900/95 shadow-lg shadow-black/40 backdrop-blur",
         style.container,
       )}
     >
@@ -71,8 +71,8 @@ export function PsSnackbar({ snackbar, onDismiss }: { snackbar: Snackbar; onDism
           <Icon type={type} />
         </span>
         <div className="min-w-0 flex-1 text-sm">
-          {title && <p className="font-semibold text-zinc-100">{title}</p>}
-          <p className="break-words text-zinc-300">{message}</p>
+          {title && <p className="font-semibold text-gray-100">{title}</p>}
+          <p className="break-words text-gray-300">{message}</p>
         </div>
         <PsIconButton label="Dismiss notification" onClick={() => onDismiss(id)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="size-4" aria-hidden>

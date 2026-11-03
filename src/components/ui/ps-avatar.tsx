@@ -18,9 +18,9 @@ export function PsAvatar({ name, src, size = "sm", live = false }: { name: strin
     <span
       aria-hidden
       className={cn(
-        "grid shrink-0 place-items-center overflow-hidden rounded-full bg-zinc-800 font-bold text-amber-400",
+        "grid shrink-0 place-items-center overflow-hidden rounded-full bg-gray-800 font-bold text-brand-400",
         sizes[size],
-        live && "ring-2 ring-red-600",
+        live && "ring-2 ring-danger-600",
       )}
     >
       {src ? (

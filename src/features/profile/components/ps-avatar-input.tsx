@@ -59,8 +59,8 @@ export function PsAvatarInput({
     <div className="flex items-center gap-4">
       <div
         className={cn(
-          "grid size-20 shrink-0 place-items-center overflow-hidden rounded-full border bg-zinc-800",
-          control["aria-invalid"] ? "border-red-500" : "border-white/10",
+          "grid size-20 shrink-0 place-items-center overflow-hidden rounded-full border bg-gray-800",
+          control["aria-invalid"] ? "border-danger-500" : "border-white/10",
         )}
       >
         {value ? (
@@ -70,7 +70,7 @@ export function PsAvatarInput({
           // eslint-disable-next-line @next/next/no-img-element -- private, auth-protected image; the optimizer can't fetch it
           <img src={currentUrl} alt="Your current profile photo" className="size-full object-cover" />
         ) : (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="size-9 text-zinc-500" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="size-9 text-gray-500" aria-hidden>
             <circle cx="12" cy="8.5" r="3.5" />
             <path d="M5 19.5a7 7 0 0 1 14 0" strokeLinecap="round" />
           </svg>
@@ -79,7 +79,7 @@ export function PsAvatarInput({
       <div className="space-y-1">
         <label
           className={cn(
-            "inline-flex cursor-pointer items-center justify-center rounded-full bg-zinc-800 px-4 py-2 text-sm text-zinc-100 transition hover:bg-zinc-700 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-amber-400",
+            "inline-flex cursor-pointer items-center justify-center rounded-full bg-gray-800 px-4 py-2 text-sm text-gray-100 transition hover:bg-gray-700 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand-400",
             busy && "pointer-events-none opacity-50",
           )}
         >
@@ -94,7 +94,7 @@ export function PsAvatarInput({
             {...control}
           />
         </label>
-        <p className="text-xs text-zinc-500">JPG, PNG or WebP. Cropped to a square.</p>
+        <p className="text-xs text-gray-500">JPG, PNG or WebP. Cropped to a square.</p>
       </div>
     </div>
   );

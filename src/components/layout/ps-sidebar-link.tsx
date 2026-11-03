@@ -16,7 +16,7 @@ export function PsSidebarLink({ href, label, icon }: { href: string; label: stri
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition",
-        active ? "bg-amber-400/10 font-medium text-amber-300" : "text-zinc-300 hover:bg-white/5 hover:text-white",
+        active ? "bg-brand-400/10 font-medium text-brand-300" : "text-gray-300 hover:bg-white/5 hover:text-white",
       )}
     >
       {icon}

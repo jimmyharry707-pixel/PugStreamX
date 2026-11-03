@@ -69,11 +69,15 @@ src/
 
 ### Calendar (`src/features/calendar/`)
 
-- `/calendar` (`CALENDAR_PATH`) is a Google-Calendar-style `PsCalendar` with Day / Week / Month views and a mini month calendar on `xl` screens. It has no events yet.
-- The view and date live in the URL (`?view=week&date=YYYY-MM-DD`). With no date it shows today. Moving around uses `window.history.pushState`, so it makes no server request.
-- "Today" is only known in the browser (the user's time zone): `useNow()` is null on the server, and the calendar shows a skeleton until it's ready.
-- Date maths goes through the pure helpers in `dates.ts`, which work on local days and `"YYYY-MM-DD"` keys. The week starts on `WEEK_STARTS_ON` (Sunday).
-- Keyboard shortcuts as in Google Calendar: T (today), J / N (next), K / P (previous), D / W / M (switch view).
+- `/calendar` (`CALENDAR_PATH`) is a Google-Calendar-style **week-only** `PsCalendar`: a 24-hour grid for 7 days using the full width. The week title in its toolbar (`PsCalendarDatePicker`) opens a month calendar popup (`PsMiniCalendar`) for jumping to a week. It has no events yet. There are no Day or Month views.
+- The shown week lives in the URL (`?date=YYYY-MM-DD`, any day of that week). With no date it shows this week. Moving around uses `window.history.pushState`, so it makes no server request.
+- "Today" is only known in the browser: `useNow()` and `useTimeZoneSetting()` are null on the server, and the calendar shows a skeleton until they're ready.
+- **Time zone:** `PsTimeZoneSelect` sits at the right of the calendar toolbar.
+  - The choice is kept in this browser's localStorage (`ps_time_zone`); `""` means the device's zone.
+  - "Today" and the now-line come from `zonedTime(now, zone)` (`time-zone.ts`), never from `Date#getHours()` or `getDate()`.
+  - The list comes from `Intl.supportedValuesOf("timeZone")`, which uses canonical names, e.g. `Asia/Calcutta` rather than `Asia/Kolkata`.
+- Date maths goes through the pure helpers in `dates.ts`, which work on local days and `"YYYY-MM-DD"` keys. The week starts on `WEEK_STARTS_ON` (Monday). Weekends (`isWeekend`) are shown in rose: tinted columns in the week, rose dates in the popup.
+- Keyboard shortcuts as in Google Calendar: T (this week), J / N (next week), K / P (previous week).
 
 ## 4. Authentication
 
@@ -111,7 +115,8 @@ src/
 
 - Do **not** add styles to `src/app/globals.css`. It only loads Tailwind and the base files.
 - `src/static/css/base/`: shared foundations, imported from `globals.css`.
-  - `theme.css`: design tokens and `@theme`.
+  - `color.css`: **every color in the project** (see "Colors" below).
+  - `theme.css`: other design tokens (fonts) in `@theme`.
   - `base.css`: element defaults.
   - Add a new base file here only for truly global concerns.
 - `src/static/css/components/<component-file-name>.css`: styles for one component, named after it (e.g. `ps-snackbar.css` for `ps-snackbar.tsx`).
@@ -120,7 +125,29 @@ src/
   - Keyframes are prefixed `ps-`.
   - Pass per-instance values with CSS variables (e.g. `style={{ "--ps-snackbar-duration": "5000ms" }}`) and states with `data-*` attributes, not inline `animation` or `transition` strings.
 - Plain Tailwind utilities in JSX are still fine for layout, spacing and colour. Use a unit CSS file for keyframes, complex gradients, pseudo-elements, media-query behaviour (e.g. reduced motion), and anything hard to read as utilities.
-- Unit files are not processed with Tailwind's `@theme`. Only `base/theme.css` (imported via `globals.css`) can define Tailwind tokens.
+- Unit files are not processed with Tailwind's `@theme`. Only the base files (`color.css`, `theme.css`, imported via `globals.css`) can define Tailwind tokens.
+
+### Colors (`src/static/css/base/color.css`)
+
+- All colors are defined there and nowhere else. Tailwind's own palette is switched off (`--color-*: initial`), so `zinc`, `amber`, `red`, etc. **don't exist**. A class like `bg-zinc-800` silently does nothing.
+- Use the role names, each a full 50–950 scale:
+
+  | Role | Use for |
+  |---|---|
+  | `gray` | surfaces, borders, text, icons |
+  | `brand` | primary buttons, links, focus, current page, today |
+  | `accent` | a second color for decoration and charts |
+  | `danger` | errors, deletes, live |
+  | `success` | saved, active, done |
+  | `warning` | inactive, needs attention |
+  | `info` | notices, in progress |
+  | `weekend` | Saturdays and Sundays in the calendar |
+
+  Besides those: `white` and `black` (for overlays, e.g. `bg-white/10`, `bg-black/60`), plus `background` / `foreground` for the page.
+- In JSX use utilities: `bg-gray-900`, `text-brand-400`, `border-danger-500/40`.
+- In unit CSS use the variables: `var(--color-gray-500)`. For transparency, use `color-mix(in oklab, var(--color-white) 6%, transparent)`.
+- Never write hex / `rgb()` / `oklch()` values outside `color.css`. To restyle the site, change the values there.
+- A new kind of color gets a new role in `color.css` (`--color-<role>-<shade>`, with a comment saying what it's for), not a one-off value.
 
 ## 6. Snackbars (`src/features/snackbar/`)
 

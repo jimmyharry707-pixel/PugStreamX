@@ -30,7 +30,7 @@ export function PsAppShell({ sidebar, topbarEnd, children }: { sidebar: ReactNod
   return (
     <div className="flex min-h-dvh">
       {/* Left panel (large screens) */}
-      <aside aria-label="Sidebar" className="hidden w-64 shrink-0 border-r border-white/10 bg-zinc-950 lg:block">
+      <aside aria-label="Sidebar" className="hidden w-64 shrink-0 border-r border-white/10 bg-gray-950 lg:block">
         <div className="sticky top-0 flex h-dvh flex-col overflow-y-auto">{sidebar}</div>
       </aside>
 
@@ -45,7 +45,7 @@ export function PsAppShell({ sidebar, topbarEnd, children }: { sidebar: ReactNod
             aria-label="Sidebar"
             // Also close when a link to the current page is tapped (the pathname doesn't change then).
             onClick={(e) => (e.target as Element).closest("a") && setDrawerOpen(false)}
-            className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-white/10 bg-zinc-950 shadow-2xl"
+            className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-white/10 bg-gray-950 shadow-2xl"
           >
             <PsIconButton label="Close navigation" onClick={() => setDrawerOpen(false)} className="absolute right-3 top-4 size-8">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="size-5" aria-hidden>
@@ -59,7 +59,7 @@ export function PsAppShell({ sidebar, topbarEnd, children }: { sidebar: ReactNod
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar */}
-        <header className="sticky top-0 z-[110] flex h-16 shrink-0 items-center gap-3 border-b border-white/10 bg-zinc-950/80 px-4 backdrop-blur lg:px-6">
+        <header className="sticky top-0 z-[110] flex h-16 shrink-0 items-center gap-3 border-b border-white/10 bg-gray-950/80 px-4 backdrop-blur lg:px-6">
           <PsIconButton
             label="Open navigation"
             aria-expanded={drawerOpen}

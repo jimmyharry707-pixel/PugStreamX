@@ -50,7 +50,7 @@ export function PsTable({
   children: ReactNode;
 }) {
   return (
-    <div className={cn("overflow-x-auto rounded-2xl border border-white/10 bg-zinc-900", className)}>
+    <div className={cn("overflow-x-auto rounded-2xl border border-white/10 bg-gray-900", className)}>
       <table aria-label={label} className={cn("w-full text-left text-sm", stack && "ps-table--stack")}>
         {children}
       </table>
@@ -59,7 +59,7 @@ export function PsTable({
 }
 
 export function PsTableHead({ children }: { children: ReactNode }) {
-  return <thead className="border-b border-white/10 text-xs uppercase tracking-wide text-zinc-500">{children}</thead>;
+  return <thead className="border-b border-white/10 text-xs uppercase tracking-wide text-gray-500">{children}</thead>;
 }
 
 export function PsTableBody({ children }: { children: ReactNode }) {
@@ -132,7 +132,7 @@ export function PsTableRowLink({ className, ...props }: ComponentProps<typeof Li
   return (
     <Link
       className={cn(
-        "outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-amber-400",
+        "outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-brand-400",
         className,
       )}
       {...props}

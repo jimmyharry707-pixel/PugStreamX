@@ -1,0 +1,124 @@
+/*
+ * Every color in PugStreamX. Imported by src/app/globals.css.
+ *
+ * Tailwind's own palette (zinc, amber, red, …) is switched off, so only the colors below exist:
+ * utilities use them by role (`bg-gray-900`, `text-brand-400`, `border-danger-500/40`) and unit
+ * CSS files use the variables (`var(--color-gray-500)`). To change a color across the whole
+ * site, change it here. Never write hex / rgb / oklch values anywhere else.
+ *
+ * `static` emits every variable even when no utility uses it, so unit CSS files can rely on them.
+ */
+@theme static {
+  --color-*: initial;
+
+  --color-white: #fff;
+  --color-black: #000;
+
+  /* Page background and default text. */
+  --color-background: var(--color-gray-950);
+  --color-foreground: var(--color-gray-100);
+
+  /* Greys: surfaces, borders, text and icons. */
+  --color-gray-50: oklch(98.5% 0 none);
+  --color-gray-100: oklch(96.7% 0.001 286.375);
+  --color-gray-200: oklch(92% 0.004 286.32);
+  --color-gray-300: oklch(87.1% 0.006 286.286);
+  --color-gray-400: oklch(70.5% 0.015 286.067);
+  --color-gray-500: oklch(55.2% 0.016 285.938);
+  --color-gray-600: oklch(44.2% 0.017 285.786);
+  --color-gray-700: oklch(37% 0.013 285.805);
+  --color-gray-800: oklch(27.4% 0.006 286.033);
+  --color-gray-900: oklch(21% 0.006 285.885);
+  --color-gray-950: oklch(14.1% 0.005 285.823);
+
+  /* Brand (amber): primary buttons, links, focus rings, the current page, today. */
+  --color-brand-50: oklch(98.7% 0.022 95.277);
+  --color-brand-100: oklch(96.2% 0.059 95.617);
+  --color-brand-200: oklch(92.4% 0.12 95.746);
+  --color-brand-300: oklch(87.9% 0.169 91.605);
+  --color-brand-400: oklch(82.8% 0.189 84.429);
+  --color-brand-500: oklch(76.9% 0.188 70.08);
+  --color-brand-600: oklch(66.6% 0.179 58.318);
+  --color-brand-700: oklch(55.5% 0.163 48.998);
+  --color-brand-800: oklch(47.3% 0.137 46.201);
+  --color-brand-900: oklch(41.4% 0.112 45.904);
+  --color-brand-950: oklch(27.9% 0.077 45.635);
+
+  /* Accent (violet): a second color for decoration and charts. */
+  --color-accent-50: oklch(96.9% 0.016 293.756);
+  --color-accent-100: oklch(94.3% 0.029 294.588);
+  --color-accent-200: oklch(89.4% 0.057 293.283);
+  --color-accent-300: oklch(81.1% 0.111 293.571);
+  --color-accent-400: oklch(70.2% 0.183 293.541);
+  --color-accent-500: oklch(60.6% 0.25 292.717);
+  --color-accent-600: oklch(54.1% 0.281 293.009);
+  --color-accent-700: oklch(49.1% 0.27 292.581);
+  --color-accent-800: oklch(43.2% 0.232 292.759);
+  --color-accent-900: oklch(38% 0.189 293.745);
+  --color-accent-950: oklch(28.3% 0.141 291.089);
+
+  /* Danger (red): errors, deletes, live. */
+  --color-danger-50: oklch(97.1% 0.013 17.38);
+  --color-danger-100: oklch(93.6% 0.032 17.717);
+  --color-danger-200: oklch(88.5% 0.062 18.334);
+  --color-danger-300: oklch(80.8% 0.114 19.571);
+  --color-danger-400: oklch(70.4% 0.191 22.216);
+  --color-danger-500: oklch(63.7% 0.237 25.331);
+  --color-danger-600: oklch(57.7% 0.245 27.325);
+  --color-danger-700: oklch(50.5% 0.213 27.518);
+  --color-danger-800: oklch(44.4% 0.177 26.899);
+  --color-danger-900: oklch(39.6% 0.141 25.723);
+  --color-danger-950: oklch(25.8% 0.092 26.042);
+
+  /* Success (emerald): saved, active, done. */
+  --color-success-50: oklch(97.9% 0.021 166.113);
+  --color-success-100: oklch(95% 0.052 163.051);
+  --color-success-200: oklch(90.5% 0.093 164.15);
+  --color-success-300: oklch(84.5% 0.143 164.978);
+  --color-success-400: oklch(76.5% 0.177 163.223);
+  --color-success-500: oklch(69.6% 0.17 162.48);
+  --color-success-600: oklch(59.6% 0.145 163.225);
+  --color-success-700: oklch(50.8% 0.118 165.612);
+  --color-success-800: oklch(43.2% 0.095 166.913);
+  --color-success-900: oklch(37.8% 0.077 168.94);
+  --color-success-950: oklch(26.2% 0.051 172.552);
+
+  /* Warning (amber, like the brand for now, but changeable on its own): inactive, needs attention. */
+  --color-warning-50: oklch(98.7% 0.022 95.277);
+  --color-warning-100: oklch(96.2% 0.059 95.617);
+  --color-warning-200: oklch(92.4% 0.12 95.746);
+  --color-warning-300: oklch(87.9% 0.169 91.605);
+  --color-warning-400: oklch(82.8% 0.189 84.429);
+  --color-warning-500: oklch(76.9% 0.188 70.08);
+  --color-warning-600: oklch(66.6% 0.179 58.318);
+  --color-warning-700: oklch(55.5% 0.163 48.998);
+  --color-warning-800: oklch(47.3% 0.137 46.201);
+  --color-warning-900: oklch(41.4% 0.112 45.904);
+  --color-warning-950: oklch(27.9% 0.077 45.635);
+
+  /* Info (sky): neutral notices, in progress. */
+  --color-info-50: oklch(97.7% 0.013 236.62);
+  --color-info-100: oklch(95.1% 0.026 236.824);
+  --color-info-200: oklch(90.1% 0.058 230.902);
+  --color-info-300: oklch(82.8% 0.111 230.318);
+  --color-info-400: oklch(74.6% 0.16 232.661);
+  --color-info-500: oklch(68.5% 0.169 237.323);
+  --color-info-600: oklch(58.8% 0.158 241.966);
+  --color-info-700: oklch(50% 0.134 242.749);
+  --color-info-800: oklch(44.3% 0.11 240.79);
+  --color-info-900: oklch(39.1% 0.09 240.876);
+  --color-info-950: oklch(29.3% 0.066 243.157);
+
+  /* Weekend (rose): Saturdays and Sundays in the calendar. */
+  --color-weekend-50: oklch(96.9% 0.015 12.422);
+  --color-weekend-100: oklch(94.1% 0.03 12.58);
+  --color-weekend-200: oklch(89.2% 0.058 10.001);
+  --color-weekend-300: oklch(81% 0.117 11.638);
+  --color-weekend-400: oklch(71.2% 0.194 13.428);
+  --color-weekend-500: oklch(64.5% 0.246 16.439);
+  --color-weekend-600: oklch(58.6% 0.253 17.585);
+  --color-weekend-700: oklch(51.4% 0.222 16.935);
+  --color-weekend-800: oklch(45.5% 0.188 13.697);
+  --color-weekend-900: oklch(41% 0.159 10.272);
+  --color-weekend-950: oklch(27.1% 0.105 12.094);
+}

@@ -27,7 +27,7 @@ export function PsUserAccountActions({
 
   return (
     <div className="space-y-3 border-t border-white/10 pt-4">
-      <p className="text-sm text-zinc-400">
+      <p className="text-sm text-gray-400">
         {active ? "This account can sign in." : "This account can't sign in until you activate it."}
         {canDelete && " Deleting removes the account, its profile and photo permanently."}
       </p>

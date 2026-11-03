@@ -52,35 +52,35 @@ export function PsUserTable({
                 <div className="flex min-w-0 items-center gap-3">
                   <PsAvatar name={name} src={user.profile?.avatarUrl} size="md" />
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-zinc-100">
+                    <p className="truncate font-medium text-gray-100">
                       <PsTableRowLink href={profileHref(user.id)} scroll={false}>
-                        {user.profile ? user.profile.fullName : <span className="text-zinc-400">Profile not completed</span>}
+                        {user.profile ? user.profile.fullName : <span className="text-gray-400">Profile not completed</span>}
                       </PsTableRowLink>
-                      {isSelf && <span className="ml-2 text-xs font-normal text-zinc-500">(you)</span>}
+                      {isSelf && <span className="ml-2 text-xs font-normal text-gray-500">(you)</span>}
                     </p>
-                    <p className="truncate text-xs text-zinc-400">
+                    <p className="truncate text-xs text-gray-400">
                       {user.profile && <>@{user.profile.displayName} · </>}
                       {user.email}
                     </p>
                   </div>
                 </div>
               </PsTableCell>
-              <PsTableCell hideBelow="md" className="text-zinc-300">
+              <PsTableCell hideBelow="md" className="text-gray-300">
                 {roleLabel(user.role)}
               </PsTableCell>
               {/* Phones: indented under the name (16px padding + 40px avatar + 12px gap), with the role. */}
               <PsTableCell stack="fill" className="max-sm:flex max-sm:flex-wrap max-sm:items-center max-sm:gap-x-2 max-sm:gap-y-1 max-sm:pl-[4.25rem]">
                 <PsUserStatusBadge active={user.active} />
                 {/* The Role column is hidden below md; show it here instead. */}
-                <span className="whitespace-nowrap text-xs text-zinc-400 md:hidden">{roleLabel(user.role)}</span>
+                <span className="whitespace-nowrap text-xs text-gray-400 md:hidden">{roleLabel(user.role)}</span>
               </PsTableCell>
-              <PsTableCell hideBelow="lg" className="whitespace-nowrap text-zinc-400">
+              <PsTableCell hideBelow="lg" className="whitespace-nowrap text-gray-400">
                 <time dateTime={user.createdAt}>{dateFormat.format(new Date(user.createdAt))}</time>
               </PsTableCell>
               <PsTableCell stack="auto" align="end" aboveRowLink>
                 {/* You can't lock yourself out, and active founders can't be deactivated. */}
                 {isSelf || (user.isSuperAdmin && user.active) ? (
-                  <span className="hidden text-xs text-zinc-500 sm:inline">—</span>
+                  <span className="hidden text-xs text-gray-500 sm:inline">—</span>
                 ) : (
                   <div className="flex justify-end">
                     <PsUserActiveButton userId={user.id} active={user.active} name={name} />

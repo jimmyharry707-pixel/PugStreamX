@@ -89,14 +89,14 @@ export function PsDialog({
         tabIndex={-1}
         onKeyDown={onKeyDown}
         className={cn(
-          "relative flex max-h-[92dvh] w-full flex-col rounded-t-2xl border border-white/10 bg-zinc-900 shadow-2xl shadow-black/60 outline-none sm:rounded-2xl",
+          "relative flex max-h-[92dvh] w-full flex-col rounded-t-2xl border border-white/10 bg-gray-900 shadow-2xl shadow-black/60 outline-none sm:rounded-2xl",
           size === "sm" ? "max-w-sm" : "max-w-lg",
         )}
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
           <div className="min-w-0">
             <h2 id={titleId} className="text-base font-semibold">{title}</h2>
-            {description && <div id={descriptionId} className="mt-1 text-sm text-zinc-400">{description}</div>}
+            {description && <div id={descriptionId} className="mt-1 text-sm text-gray-400">{description}</div>}
           </div>
           <PsIconButton label="Close" onClick={() => onCloseRef.current()} className="-mr-1 size-8">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="size-5" aria-hidden>

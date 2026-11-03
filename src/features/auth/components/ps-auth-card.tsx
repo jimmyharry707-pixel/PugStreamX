@@ -17,13 +17,13 @@ export function PsAuthCard({
 }) {
   return (
     <div className={cn("w-full", wide ? "max-w-xl" : "max-w-sm")}>
-      <div className="rounded-2xl border border-white/10 bg-zinc-900/80 p-6 shadow-2xl shadow-black/50 backdrop-blur-xl sm:p-8">
+      <div className="rounded-2xl border border-white/10 bg-gray-900/80 p-6 shadow-2xl shadow-black/50 backdrop-blur-xl sm:p-8">
         <h1 className="text-2xl font-bold">{title}</h1>
-        {description && <p className="mt-1 text-sm text-zinc-400">{description}</p>}
+        {description && <p className="mt-1 text-sm text-gray-400">{description}</p>}
         <div className="mt-6">{children}</div>
       </div>
       {/* A div, not a p: footers may hold forms (e.g. the sign-out button). */}
-      {footer && <div className="mt-6 text-center text-sm text-zinc-400">{footer}</div>}
+      {footer && <div className="mt-6 text-center text-sm text-gray-400">{footer}</div>}
     </div>
   );
 }

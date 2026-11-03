@@ -71,9 +71,9 @@
 .ps-animated-bg__scrim {
   background: radial-gradient(
     ellipse at center,
-    rgb(9 9 11 / 0.82) 0%,
-    rgb(9 9 11 / 0.55) 55%,
-    rgb(9 9 11 / 0.85) 100%
+    color-mix(in oklab, var(--color-background) 82%, transparent) 0%,
+    color-mix(in oklab, var(--color-background) 55%, transparent) 55%,
+    color-mix(in oklab, var(--color-background) 85%, transparent) 100%
   );
 }
 

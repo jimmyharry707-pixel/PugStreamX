@@ -1,4 +1,4 @@
-import { WEEK_STARTS_ON, type CalendarView } from "./constants";
+import { WEEK_STARTS_ON } from "./constants";
 
 // Pure date helpers for the calendar. Everything works on local calendar days (midnight, the
 // user's time zone) and uses "YYYY-MM-DD" keys in URLs, so time zones can't shift a day.
@@ -50,51 +50,45 @@ export function isSameDay(a: Date | null, b: Date | null): boolean {
   return !!a && !!b && toDateKey(a) === toDateKey(b);
 }
 
+export function isSameWeek(a: Date, b: Date): boolean {
+  return isSameDay(startOfWeek(a), startOfWeek(b));
+}
+
 export function isSameMonth(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }
 
-/**
- * The weeks shown for a month: from the week holding the 1st to the week holding the last day
- * (4 to 6 weeks). `fixed` always returns 6 weeks, so a small calendar keeps its height.
- */
-export function monthWeeks(date: Date, { fixed = false } = {}): Date[][] {
-  const first = startOfMonth(date);
-  const last = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-  const weeks: Date[][] = [];
-  for (let start = startOfWeek(first); fixed ? weeks.length < 6 : start <= last; start = addDays(start, 7)) {
-    weeks.push(weekDays(start));
-  }
-  return weeks;
+/** Saturday or Sunday. */
+export function isWeekend(date: Date): boolean {
+  return date.getDay() === 0 || date.getDay() === 6;
 }
 
-/** The date one step before (-1) or after (1) in a view: a day, a week or a month. */
-export function shiftDate(view: CalendarView, date: Date, step: -1 | 1): Date {
-  if (view === "day") return addDays(date, step);
-  if (view === "week") return addDays(date, 7 * step);
-  return addMonths(date, step);
+/** Six weeks starting with the week holding the 1st, for a small month calendar. */
+export function monthWeeks(date: Date): Date[][] {
+  const start = startOfWeek(startOfMonth(date));
+  return Array.from({ length: 6 }, (_, i) => weekDays(addDays(start, i * 7)));
 }
 
 const monthYear = new Intl.DateTimeFormat("en", { month: "long", year: "numeric" });
 const shortMonth = new Intl.DateTimeFormat("en", { month: "short" });
 const shortMonthYear = new Intl.DateTimeFormat("en", { month: "short", year: "numeric" });
-const fullDate = new Intl.DateTimeFormat("en", { month: "long", day: "numeric", year: "numeric" });
 
-/** Toolbar title: "November 2026", "Nov – Dec 2026", "Dec 2026 – Jan 2027" or "November 3, 2026". */
-export function calendarTitle(view: CalendarView, date: Date): string {
-  if (view === "day") return fullDate.format(date);
-  if (view === "month") return monthYear.format(date);
+/**
+ * Title of the week holding `date`: "November 2026" ("Nov 2026" when `short`, for phones),
+ * "Nov – Dec 2026" or "Dec 2026 – Jan 2027".
+ */
+export function weekTitle(date: Date, { short = false } = {}): string {
   const days = weekDays(date);
   const [first, last] = [days[0], days[6]];
-  if (isSameMonth(first, last)) return monthYear.format(first);
+  if (isSameMonth(first, last)) return (short ? shortMonthYear : monthYear).format(first);
   if (first.getFullYear() === last.getFullYear()) {
     return `${shortMonth.format(first)} – ${shortMonthYear.format(last)}`;
   }
   return `${shortMonthYear.format(first)} – ${shortMonthYear.format(last)}`;
 }
 
+export const formatMonthYear = monthYear.format;
 export const formatWeekday = new Intl.DateTimeFormat("en", { weekday: "short" }).format;
 export const formatWeekdayNarrow = new Intl.DateTimeFormat("en", { weekday: "narrow" }).format;
 export const formatFullDate = new Intl.DateTimeFormat("en", { dateStyle: "full" }).format;
-export const formatShortMonth = shortMonth.format;
 export const formatHour = new Intl.DateTimeFormat("en", { hour: "numeric" }).format;

@@ -1,5 +1,6 @@
 /* Entry stylesheet: Tailwind plus shared base styles only.
    Component styles live in src/static/css/components/ and are imported by their component. */
 @import "tailwindcss";
+@import "../static/css/base/color.css";
 @import "../static/css/base/theme.css";
 @import "../static/css/base/base.css";

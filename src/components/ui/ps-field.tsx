@@ -29,14 +29,14 @@ export function PsField({
 
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium text-zinc-200">
+      <label htmlFor={id} className="block text-sm font-medium text-gray-200">
         {label}
       </label>
       {children({ id, "aria-invalid": error ? true : undefined, "aria-describedby": describedBy })}
       {error ? (
-        <p id={`${id}-error`} className="text-sm text-red-400">{error}</p>
+        <p id={`${id}-error`} className="text-sm text-danger-400">{error}</p>
       ) : (
-        hint && <p id={`${id}-hint`} className="text-xs text-zinc-500">{hint}</p>
+        hint && <p id={`${id}-hint`} className="text-xs text-gray-500">{hint}</p>
       )}
     </div>
   );

@@ -11,5 +11,5 @@ export async function PsCurrentUserMenu() {
 
 /** Placeholder with the badge's size, shown while the session loads. */
 export function PsCurrentUserMenuSkeleton() {
-  return <div aria-hidden className="h-10 w-10 animate-pulse rounded-full bg-zinc-800 sm:w-40" />;
+  return <div aria-hidden className="h-10 w-10 animate-pulse rounded-full bg-gray-800 sm:w-40" />;
 }

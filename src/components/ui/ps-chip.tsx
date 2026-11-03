@@ -9,7 +9,7 @@ export function PsChip({ active = false, className, ...props }: ComponentProps<t
       aria-current={active ? "page" : undefined}
       className={cn(
         "rounded-full px-4 py-1.5 text-sm transition",
-        active ? "bg-amber-400 font-semibold text-zinc-950" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700",
+        active ? "bg-brand-400 font-semibold text-gray-950" : "bg-gray-800 text-gray-300 hover:bg-gray-700",
         className,
       )}
       {...props}

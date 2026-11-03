@@ -37,10 +37,10 @@ export function PsSidebarNav({ adminItem }: { adminItem?: ReactNode }) {
           {NAV_ITEMS.map((item) => (
             <li key={item.label}>
               {"soon" in item ? (
-                <span aria-disabled="true" className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sm", "cursor-not-allowed text-zinc-600")}>
+                <span aria-disabled="true" className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sm", "cursor-not-allowed text-gray-600")}>
                   {item.icon}
                   {item.label}
-                  <span className="ml-auto rounded-full bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">Soon</span>
+                  <span className="ml-auto rounded-full bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">Soon</span>
                 </span>
               ) : (
                 <PsSidebarLink href={item.href} label={item.label} icon={item.icon} />

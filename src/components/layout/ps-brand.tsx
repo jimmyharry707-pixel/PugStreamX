@@ -10,7 +10,7 @@ export function PsBrand({ href = "/", size = "md", className }: { href?: string;
     >
       <span aria-hidden>🐶</span>
       <span>
-        PugStream<span className="text-amber-400">X</span>
+        PugStream<span className="text-brand-400">X</span>
       </span>
     </Link>
   );

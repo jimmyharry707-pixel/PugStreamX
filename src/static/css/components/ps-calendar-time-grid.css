@@ -38,7 +38,7 @@
     font-size: 10px;
     line-height: 1rem;
     white-space: nowrap;
-    color: var(--color-zinc-500);
+    color: var(--color-gray-500);
   }
 
   /* One line per hour, drawn as a background so each day stays a single element. */
@@ -46,9 +46,18 @@
     position: relative;
     min-width: 0;
     height: calc(var(--ps-calendar-hour) * 24);
-    border-left: 1px solid rgb(255 255 255 / 0.06);
-    background-image: linear-gradient(to bottom, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+    border-left: 1px solid color-mix(in oklab, var(--color-white) 6%, transparent);
+    background-image: linear-gradient(to bottom, color-mix(in oklab, var(--color-white) 6%, transparent) 1px, transparent 1px);
     background-size: 100% var(--ps-calendar-hour);
+  }
+
+  /* Weekend days (Saturday, Sunday): a faint rose tint under the hour lines. */
+  .ps-calendar-time-grid__day[data-weekend] {
+    background-color: color-mix(in oklab, var(--color-weekend-400) 5%, transparent);
+  }
+
+  .ps-calendar-time-grid__column[data-weekend] {
+    background-color: color-mix(in oklab, var(--color-weekend-400) 4%, transparent);
   }
 
   /* Current time. --ps-calendar-now is the share of the day gone (0 to 1). */
@@ -58,7 +67,7 @@
     top: calc(var(--ps-calendar-now) * 100%);
     z-index: 1;
     height: 2px;
-    background: var(--color-red-500);
+    background: var(--color-danger-500);
     pointer-events: none;
   }
 
@@ -70,6 +79,6 @@
     width: 12px;
     height: 12px;
     border-radius: 9999px;
-    background: var(--color-red-500);
+    background: var(--color-danger-500);
   }
 }

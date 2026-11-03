@@ -3,66 +3,73 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 import { cn } from "@/lib/utils/cn";
 import "@/static/css/components/ps-calendar-time-grid.css";
-import { formatFullDate, formatHour, formatWeekday, formatWeekdayNarrow, isSameDay } from "../dates";
+import { formatFullDate, formatHour, formatWeekday, formatWeekdayNarrow, isSameDay, isWeekend } from "../dates";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
 /**
- * Week and Day views: day headings on top and a scrolling 24-hour grid below, with a red line
- * at the current time in today's column.
+ * The week: day headings on top and a scrolling 24-hour grid below, with a red line at the
+ * current time in today's column. Weekend days are tinted. `today` and `nowMinutes` (minutes
+ * since midnight) are in the calendar's time zone, which `zoneLabel` names ("GMT+8").
  */
 export function PsCalendarTimeGrid({
   days,
-  now,
-  onOpenDay,
+  today,
+  nowMinutes,
+  zoneLabel,
 }: {
   days: Date[];
-  now: Date | null;
-  onOpenDay: (day: Date) => void;
+  today: Date;
+  nowMinutes: number;
+  zoneLabel: string;
 }) {
   const bodyRef = useRef<HTMLDivElement>(null);
+  const startMinutes = useRef(nowMinutes);
 
   // Start scrolled to an hour before now, like Google Calendar.
   useEffect(() => {
     const body = bodyRef.current;
     if (!body) return;
-    body.scrollTop = Math.max(0, new Date().getHours() - 1) * (body.scrollHeight / 24);
+    body.scrollTop = Math.max(0, Math.floor(startMinutes.current / 60) - 1) * (body.scrollHeight / 24);
   }, []);
-
-  const week = days.length > 1;
-  const columns = cn("grid flex-1", week ? "grid-cols-7" : "grid-cols-1");
 
   return (
     <div className="ps-calendar-time-grid flex min-h-0 flex-1 flex-col">
       <div className="ps-calendar-time-grid__head flex border-b border-white/10">
-        <div className="ps-calendar-time-grid__gutter shrink-0" />
-        <div className={columns}>
+        <div className="ps-calendar-time-grid__gutter flex shrink-0 items-end justify-end pb-1.5 pr-2 text-[10px] text-gray-500">
+          <span title="Time zone">{zoneLabel}</span>
+        </div>
+        <div className="grid flex-1 grid-cols-7">
           {days.map((day) => {
-            const isToday = isSameDay(day, now);
+            const isToday = isSameDay(day, today);
+            const weekend = isWeekend(day);
             return (
-              <div key={day.getTime()} className="flex min-w-0 flex-col items-center gap-1 py-2">
-                <span className={cn("text-[11px] font-medium uppercase tracking-wide", isToday ? "text-amber-300" : "text-zinc-500")}>
-                  {week ? (
-                    <>
-                      <span className="sm:hidden">{formatWeekdayNarrow(day)}</span>
-                      <span className="max-sm:hidden">{formatWeekday(day)}</span>
-                    </>
-                  ) : (
-                    formatWeekday(day)
-                  )}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onOpenDay(day)}
-                  aria-label={formatFullDate(day)}
-                  aria-current={isToday ? "date" : undefined}
+              <div
+                key={day.getTime()}
+                aria-current={isToday ? "date" : undefined}
+                data-weekend={weekend || undefined}
+                className="ps-calendar-time-grid__day flex min-w-0 flex-col items-center gap-1 py-2"
+              >
+                <span className="sr-only">{formatFullDate(day)}</span>
+                <span
+                  aria-hidden
                   className={cn(
-                    "flex size-8 items-center justify-center rounded-full text-base font-medium transition sm:size-11 sm:text-2xl",
-                    isToday ? "bg-amber-400 text-zinc-950 hover:bg-amber-300" : "text-zinc-200 hover:bg-white/10",
+                    "text-[11px] font-medium uppercase tracking-wide",
+                    isToday ? "text-brand-300" : weekend ? "text-weekend-300/80" : "text-gray-500",
+                  )}
+                >
+                  <span className="sm:hidden">{formatWeekdayNarrow(day)}</span>
+                  <span className="max-sm:hidden">{formatWeekday(day)}</span>
+                </span>
+                <span
+                  aria-hidden
+                  className={cn(
+                    "flex size-8 items-center justify-center rounded-full text-base font-medium sm:size-11 sm:text-2xl",
+                    isToday ? "bg-brand-400 text-gray-950" : weekend ? "text-weekend-200" : "text-gray-200",
                   )}
                 >
                   {day.getDate()}
-                </button>
+                </span>
               </div>
             );
           })}
@@ -79,13 +86,13 @@ export function PsCalendarTimeGrid({
               </div>
             ))}
           </div>
-          <div className={columns}>
+          <div className="grid flex-1 grid-cols-7">
             {days.map((day) => (
-              <div key={day.getTime()} className="ps-calendar-time-grid__column">
-                {now && isSameDay(day, now) && (
+              <div key={day.getTime()} data-weekend={isWeekend(day) || undefined} className="ps-calendar-time-grid__column">
+                {isSameDay(day, today) && (
                   <div
                     className="ps-calendar-time-grid__now"
-                    style={{ "--ps-calendar-now": (now.getHours() * 60 + now.getMinutes()) / 1440 } as CSSProperties}
+                    style={{ "--ps-calendar-now": nowMinutes / 1440 } as CSSProperties}
                     aria-hidden
                   />
                 )}

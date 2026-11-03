@@ -19,7 +19,7 @@ export default function SignInPage() {
         footer={
           <>
             New to PugStreamX?{" "}
-            <Link href="/signup" className="font-medium text-amber-400 hover:underline">Create an account</Link>
+            <Link href="/signup" className="font-medium text-brand-400 hover:underline">Create an account</Link>
           </>
         }
       >

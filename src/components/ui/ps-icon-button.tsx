@@ -17,7 +17,7 @@ export function PsIconButton({
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-md p-1 text-zinc-500 transition hover:bg-white/10 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-amber-400 disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex shrink-0 items-center justify-center rounded-md p-1 text-gray-500 transition hover:bg-white/10 hover:text-gray-200 focus-visible:outline-2 focus-visible:outline-brand-400 disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
       {...props}

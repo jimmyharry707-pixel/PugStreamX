@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils/cn";
 type Variant = "error" | "info" | "success";
 
 const variants: Record<Variant, string> = {
-  error: "border-red-500/40 bg-red-500/10 text-red-300",
-  info: "border-sky-500/40 bg-sky-500/10 text-sky-300",
-  success: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+  error: "border-danger-500/40 bg-danger-500/10 text-danger-300",
+  info: "border-info-500/40 bg-info-500/10 text-info-300",
+  success: "border-success-500/40 bg-success-500/10 text-success-300",
 };
 
 export function PsAlert({ variant = "error", children }: { variant?: Variant; children: ReactNode }) {

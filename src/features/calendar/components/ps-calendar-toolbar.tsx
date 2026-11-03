@@ -2,8 +2,9 @@
 
 import { PsButton } from "@/components/ui/ps-button";
 import { PsIconButton } from "@/components/ui/ps-icon-button";
-import { cn } from "@/lib/utils/cn";
-import { CALENDAR_VIEW_KEYS, CALENDAR_VIEW_LABELS, CALENDAR_VIEWS, type CalendarView } from "../constants";
+import { weekTitle } from "../dates";
+import { PsCalendarDatePicker } from "./ps-calendar-date-picker";
+import { PsTimeZoneSelect } from "./ps-time-zone-select";
 
 const chevron = (d: string) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="size-5" aria-hidden>
@@ -11,54 +12,49 @@ const chevron = (d: string) => (
   </svg>
 );
 
-/** Calendar header: Today, previous / next, the period title and the Day / Week / Month switcher. */
+/**
+ * Calendar header: Today, previous / next week, the week's title (which opens a month calendar
+ * popup for jumping to another week) and the time zone picker.
+ */
 export function PsCalendarToolbar({
-  view,
-  title,
-  onToday,
-  onStep,
-  onView,
+  date,
+  today,
+  onGo,
+  timeZone,
+  onTimeZoneChange,
 }: {
-  view: CalendarView;
-  title: string;
-  onToday: () => void;
-  onStep: (step: -1 | 1) => void;
-  onView: (view: CalendarView) => void;
+  date: Date;
+  today: Date | null;
+  /** Show the week holding this date; null for this week. */
+  onGo: (date: Date | null) => void;
+  /** The chosen time zone; "" for the device's. */
+  timeZone: string;
+  onTimeZoneChange: (timeZone: string) => void;
 }) {
+  const step = (days: number) => onGo(new Date(date.getFullYear(), date.getMonth(), date.getDate() + days));
+
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-white/10 px-4 py-3 lg:px-6">
-      <PsButton variant="secondary" size="sm" onClick={onToday} title="Today (T)" className="px-4 py-1.5">
+    // `relative`: on phones the date picker popup is placed against the toolbar.
+    <div className="relative flex items-center gap-1.5 border-b border-white/10 px-4 py-3 sm:gap-3 lg:px-6">
+      <PsButton variant="secondary" size="sm" onClick={() => onGo(null)} title="Today (T)" className="px-3 py-1.5 sm:px-4">
         Today
       </PsButton>
       <div className="flex items-center">
-        <PsIconButton label={`Previous ${view} (K)`} onClick={() => onStep(-1)} className="size-8 rounded-full text-zinc-300">
+        <PsIconButton label="Previous week (K)" onClick={() => step(-7)} className="size-7 rounded-full text-gray-300 sm:size-8">
           {chevron("m15 6-6 6 6 6")}
         </PsIconButton>
-        <PsIconButton label={`Next ${view} (J)`} onClick={() => onStep(1)} className="size-8 rounded-full text-zinc-300">
+        <PsIconButton label="Next week (J)" onClick={() => step(7)} className="size-7 rounded-full text-gray-300 sm:size-8">
           {chevron("m9 6 6 6-6 6")}
         </PsIconButton>
       </div>
-      {/* Phones: the title gets its own line under the buttons. */}
-      <h1 aria-live="polite" className="min-w-0 truncate text-lg font-semibold max-sm:order-last max-sm:basis-full sm:flex-1 sm:text-xl">
-        {title}
-      </h1>
-      <div role="group" aria-label="Calendar view" className="ml-auto inline-flex rounded-full border border-white/10 bg-zinc-900 p-0.5">
-        {CALENDAR_VIEWS.map((v) => (
-          <button
-            key={v}
-            type="button"
-            aria-pressed={v === view}
-            title={`${CALENDAR_VIEW_LABELS[v]} (${CALENDAR_VIEW_KEYS[v].toUpperCase()})`}
-            onClick={() => onView(v)}
-            className={cn(
-              "rounded-full px-3 py-1 text-xs transition sm:px-4 sm:text-sm",
-              v === view ? "bg-amber-400 font-semibold text-zinc-950" : "text-zinc-300 hover:text-white",
-            )}
-          >
-            {CALENDAR_VIEW_LABELS[v]}
-          </button>
-        ))}
-      </div>
+      <PsCalendarDatePicker
+        title={weekTitle(date)}
+        shortTitle={weekTitle(date, { short: true })}
+        selected={date}
+        today={today}
+        onSelect={onGo}
+      />
+      <PsTimeZoneSelect value={timeZone} onChange={onTimeZoneChange} />
     </div>
   );
 }

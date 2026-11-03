@@ -18,13 +18,13 @@ import "@/static/css/components/ps-animated-background.css";
 
 const vars = (v: Record<string, string | number>) => v as CSSProperties;
 
-const AVATAR_COLORS = ["bg-amber-400", "bg-violet-500", "bg-sky-500", "bg-emerald-500", "bg-rose-500"];
+const AVATAR_COLORS = ["bg-brand-400", "bg-accent-500", "bg-info-500", "bg-success-500", "bg-danger-500"];
 
 function Avatars({ seed, count = 3 }: { seed: number; count?: number }) {
   return (
     <div className="flex -space-x-1.5">
       {Array.from({ length: count }, (_, i) => (
-        <span key={i} className={cn("size-4 rounded-full ring-2 ring-zinc-900", AVATAR_COLORS[(seed + i) % AVATAR_COLORS.length])} />
+        <span key={i} className={cn("size-4 rounded-full ring-2 ring-gray-900", AVATAR_COLORS[(seed + i) % AVATAR_COLORS.length])} />
       ))}
     </div>
   );
@@ -33,9 +33,9 @@ function Avatars({ seed, count = 3 }: { seed: number; count?: number }) {
 /** Widget shell: fixed 4:3 shape (see geometry note above), header row, flexible body. */
 function Card({ title, aside, children }: { title: ReactNode; aside?: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex aspect-[4/3] flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-900/90 p-3 shadow-lg shadow-black/30">
+    <div className="flex aspect-[4/3] flex-col overflow-hidden rounded-xl border border-white/10 bg-gray-900/90 p-3 shadow-lg shadow-black/30">
       <div className="mb-2.5 flex shrink-0 items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-2 truncate text-[11px] font-semibold text-zinc-200">{title}</span>
+        <span className="flex min-w-0 items-center gap-2 truncate text-[11px] font-semibold text-gray-200">{title}</span>
         {aside}
       </div>
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
@@ -46,10 +46,10 @@ function Card({ title, aside, children }: { title: ReactNode; aside?: ReactNode;
 // Task assignment
 const TASKS = ["Design review", "Update roadmap", "Fix login bug", "Write weekly report", "Client meeting prep", "Plan sprint 15", "Onboard new member", "Budget check"];
 const STATUSES = [
-  { label: "To do", className: "bg-zinc-700 text-zinc-200" },
-  { label: "In progress", className: "bg-sky-500/20 text-sky-300" },
-  { label: "Review", className: "bg-violet-500/20 text-violet-300" },
-  { label: "Done", className: "bg-emerald-500/20 text-emerald-300" },
+  { label: "To do", className: "bg-gray-700 text-gray-200" },
+  { label: "In progress", className: "bg-info-500/20 text-info-300" },
+  { label: "Review", className: "bg-accent-500/20 text-accent-300" },
+  { label: "Done", className: "bg-success-500/20 text-success-300" },
 ];
 
 function TaskWidget({ seed }: { seed: number }) {
@@ -59,14 +59,14 @@ function TaskWidget({ seed }: { seed: number }) {
     <Card
       title={
         <>
-          <span className={cn("ps-animated-bg__check grid size-3.5 shrink-0 place-items-center rounded border", done ? "border-emerald-400 bg-emerald-500" : "border-zinc-500")}>
+          <span className={cn("ps-animated-bg__check grid size-3.5 shrink-0 place-items-center rounded border", done ? "border-success-400 bg-success-500" : "border-gray-500")}>
             {done && (
-              <svg viewBox="0 0 12 12" className="size-2.5 text-zinc-900" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <svg viewBox="0 0 12 12" className="size-2.5 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2.5}>
                 <path d="m2.5 6.5 2.5 2.5 4.5-5" pathLength={1} />
               </svg>
             )}
           </span>
-          <span className={cn("truncate font-medium", done && "text-zinc-400 line-through")}>{TASKS[seed % TASKS.length]}</span>
+          <span className={cn("truncate font-medium", done && "text-gray-400 line-through")}>{TASKS[seed % TASKS.length]}</span>
         </>
       }
     >
@@ -89,20 +89,20 @@ function ChatWidget({ seed }: { seed: number }) {
     { mine: true, width: "w-2/3" },
   ];
   return (
-    <Card title={CHANNELS[seed % CHANNELS.length]} aside={<span className="size-1.5 rounded-full bg-emerald-400" />}>
+    <Card title={CHANNELS[seed % CHANNELS.length]} aside={<span className="size-1.5 rounded-full bg-success-400" />}>
       <div className="flex flex-1 flex-col justify-end gap-2">
         {rows.map((row, i) => (
           <div key={i} className={cn("flex items-end gap-1.5", row.mine && "flex-row-reverse")}>
             <span className={cn("size-4 shrink-0 rounded-full", AVATAR_COLORS[(seed + i * 2) % AVATAR_COLORS.length])} />
-            <span className={cn("h-4 rounded-lg", row.width, row.mine ? "bg-amber-400/30" : "bg-white/10")} />
+            <span className={cn("h-4 rounded-lg", row.width, row.mine ? "bg-brand-400/30" : "bg-white/10")} />
           </div>
         ))}
         <div className="flex items-center gap-1.5">
           <span className={cn("size-4 shrink-0 rounded-full", AVATAR_COLORS[(seed + 3) % AVATAR_COLORS.length])} />
           <span className="ps-animated-bg__typing flex gap-0.5 rounded-lg bg-white/10 px-2 py-1.5">
-            <span className="size-1 rounded-full bg-zinc-300" />
-            <span className="size-1 rounded-full bg-zinc-300" />
-            <span className="size-1 rounded-full bg-zinc-300" />
+            <span className="size-1 rounded-full bg-gray-300" />
+            <span className="size-1 rounded-full bg-gray-300" />
+            <span className="size-1 rounded-full bg-gray-300" />
           </span>
         </div>
       </div>
@@ -118,13 +118,13 @@ function BarChartWidget({ seed }: { seed: number }) {
   return (
     <Card
       title={CHART_TITLES[seed % CHART_TITLES.length]}
-      aside={<span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-300">+{8 + (seed % 9)}%</span>}
+      aside={<span className="rounded-full bg-success-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-success-300">+{8 + (seed % 9)}%</span>}
     >
       <div className="flex flex-1 items-end gap-1.5">
         {heights.map((h, i) => (
           <span
             key={i}
-            className={cn("ps-animated-bg__bar flex-1 rounded-t", i === heights.length - 1 ? "bg-amber-400" : "bg-violet-500/70")}
+            className={cn("ps-animated-bg__bar flex-1 rounded-t", i === heights.length - 1 ? "bg-brand-400" : "bg-accent-500/70")}
             style={vars({ height: `${h}%`, "--ps-bar-delay": `${-(i * 0.45 + seed * 0.3)}s` })}
           />
         ))}
@@ -136,13 +136,13 @@ function BarChartWidget({ seed }: { seed: number }) {
 function LineChartWidget({ seed }: { seed: number }) {
   const points = [32, 26, 29, 18, 22, 12, 15, 6].map((y, i) => `${i * 14},${Math.max(4, (y + seed * 5) % 34)}`).join(" ");
   return (
-    <Card title="Velocity" aside={<span className="text-[9px] font-semibold text-sky-300">Sprint {12 + (seed % 6)}</span>}>
+    <Card title="Velocity" aside={<span className="text-[9px] font-semibold text-info-300">Sprint {12 + (seed % 6)}</span>}>
       <svg viewBox="0 0 98 40" preserveAspectRatio="none" className="min-h-0 w-full flex-1 overflow-visible" fill="none">
-        <polyline points={`0,40 ${points} 98,40`} className="fill-sky-500/10" stroke="none" />
+        <polyline points={`0,40 ${points} 98,40`} className="fill-info-500/10" stroke="none" />
         <polyline
           points={points}
           pathLength={1}
-          className="ps-animated-bg__line stroke-sky-400"
+          className="ps-animated-bg__line stroke-info-400"
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -157,13 +157,13 @@ function LineChartWidget({ seed }: { seed: number }) {
 // Planning
 function PlanWidget({ seed }: { seed: number }) {
   const rows = [
-    { start: 0, span: 45, color: "bg-violet-500/70" },
-    { start: 25, span: 40, color: "bg-sky-500/70" },
-    { start: 40, span: 35, color: "bg-amber-400/80" },
-    { start: 60, span: 40, color: "bg-emerald-500/70" },
+    { start: 0, span: 45, color: "bg-accent-500/70" },
+    { start: 25, span: 40, color: "bg-info-500/70" },
+    { start: 40, span: 35, color: "bg-brand-400/80" },
+    { start: 60, span: 40, color: "bg-success-500/70" },
   ].map((r, i) => ({ ...r, start: (r.start + seed * 7 + i * 3) % 50 }));
   return (
-    <Card title={`Sprint ${14 + (seed % 5)} plan`} aside={<span className="text-[9px] text-zinc-400">Mon–Fri</span>}>
+    <Card title={`Sprint ${14 + (seed % 5)} plan`} aside={<span className="text-[9px] text-gray-400">Mon–Fri</span>}>
       <div className="flex flex-1 flex-col justify-evenly">
         {rows.map((row, i) => (
           <div key={i} className="flex items-center gap-2">
@@ -179,7 +179,7 @@ function PlanWidget({ seed }: { seed: number }) {
 }
 
 // Goals
-const GOAL_COLORS = ["bg-amber-400", "bg-emerald-400", "bg-violet-400"];
+const GOAL_COLORS = ["bg-brand-400", "bg-success-400", "bg-accent-400"];
 
 function ProgressWidget({ seed }: { seed: number }) {
   return (
@@ -215,9 +215,9 @@ export function PsAnimatedBackground({ videoSrc }: { videoSrc?: string }) {
   return (
     <div aria-hidden className="ps-animated-bg pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-background">
       {/* Drifting color glows */}
-      <div className="ps-animated-bg__glow--a absolute -left-[10%] -top-[20%] size-[60vmax] rounded-full bg-violet-600/25 blur-[100px]" />
-      <div className="ps-animated-bg__glow--b absolute -bottom-[25%] -right-[10%] size-[55vmax] rounded-full bg-amber-500/20 blur-[100px]" />
-      <div className="ps-animated-bg__glow--c absolute left-[30%] top-[40%] size-[40vmax] rounded-full bg-sky-500/15 blur-[100px]" />
+      <div className="ps-animated-bg__glow--a absolute -left-[10%] -top-[20%] size-[60vmax] rounded-full bg-accent-600/25 blur-[100px]" />
+      <div className="ps-animated-bg__glow--b absolute -bottom-[25%] -right-[10%] size-[55vmax] rounded-full bg-brand-500/20 blur-[100px]" />
+      <div className="ps-animated-bg__glow--c absolute left-[30%] top-[40%] size-[40vmax] rounded-full bg-info-500/15 blur-[100px]" />
 
       {videoSrc ? (
         <video className="absolute inset-0 size-full object-cover opacity-50" src={videoSrc} autoPlay muted loop playsInline preload="auto" />
