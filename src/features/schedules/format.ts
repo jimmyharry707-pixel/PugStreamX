@@ -15,6 +15,11 @@ export function formatShortDate(start: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en", { timeZone, weekday: "short", month: "short", day: "numeric" }).format(start);
 }
 
+/** "Thu, Nov 5, 3:40 PM" */
+export function formatShortDateTime(at: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en", { timeZone, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(at);
+}
+
 /** Minutes since midnight → "HH:MM" for a time input (kept within the day). */
 export function minutesToTime(minutes: number): string {
   const m = Math.min(Math.max(Math.round(minutes), 0), 23 * 60 + 59);

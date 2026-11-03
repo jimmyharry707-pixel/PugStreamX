@@ -21,9 +21,9 @@ const link = (message: string) =>
       }
     }, "Enter a full link starting with https://");
 
-/** Empty optional fields are stored as null. */
+/** Empty or missing optional fields are stored as null (e.g. no link field while screen share isn't required). */
 const optional = <T extends z.ZodType>(schema: T) =>
-  z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : v), schema.nullable());
+  z.preprocess((v) => (v === undefined || (typeof v === "string" && v.trim() === "") ? null : v), schema.nullable());
 
 /** A note. Browsers send line breaks from a textarea as \r\n; store plain \n. */
 const noteText = z
@@ -32,9 +32,13 @@ const noteText = z
   .transform((v) => v.replace(/\r\n?/g, "\n"))
   .pipe(z.string().max(NOTE_MAX, `Use at most ${NOTE_MAX} characters.`));
 
-/** A Caller's fields. The link only counts while the schedule requires screen share. */
+/**
+ * A Caller's fields. The link only counts while the schedule requires screen share. `intent` is
+ * the button clicked: Save, Done, or Undo done ("reopen").
+ */
 export const callerSchema = z.object({
   scheduleId: z.string().regex(/^[a-f0-9]{24}$/i),
+  intent: z.enum(["save", "done", "reopen"]).catch("save"),
   screenShareUrl: optional(link("Enter the screen share link.")),
   callerNote: optional(noteText),
 });

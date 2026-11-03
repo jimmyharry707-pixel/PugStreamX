@@ -36,6 +36,7 @@ function toEvents(schedule: Schedule, timeZone: string): CalendarEvent[] {
     title: schedule.title,
     time: formatTimeRange(new Date(schedule.start), new Date(schedule.end), timeZone),
     detail: schedule.clientCompany,
+    done: !!schedule.doneAt,
   };
   if (isSameDay(start.day, end.day)) return [{ ...base, key: schedule.id, day: start.day, start: start.minutes, end: end.minutes }];
   return [

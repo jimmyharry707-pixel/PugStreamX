@@ -19,6 +19,7 @@ export async function createSchedule(groupId: ObjectId, userId: ObjectId, input:
       ...input,
       screenShareUrl: null,
       callerNote: null,
+      doneAt: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -49,17 +50,22 @@ export async function updateSchedule(groupId: ObjectId, scheduleId: ObjectId, in
 }
 
 /**
- * A Caller's fields. The screen share link is only saved while the schedule requires one.
- * Null if the schedule isn't in the group.
+ * A Caller's fields, and when it was marked done (`doneAt`; null while not done). The screen
+ * share link is only saved while the schedule requires one. Null if the schedule isn't in the group.
  */
-export async function updateCallerFields(groupId: ObjectId, scheduleId: ObjectId, input: CallerInput): Promise<Schedule | null> {
+export async function updateCallerFields(
+  groupId: ObjectId,
+  scheduleId: ObjectId,
+  input: CallerInput,
+  doneAt: Date | null,
+): Promise<Schedule | null> {
   const schedules = await getCollection<ScheduleDoc>("schedules");
   const current = await schedules.findOne({ _id: scheduleId, groupId });
   if (!current) return null;
   const required = current.screenShareRequired ?? !!current.screenShareUrl;
   const doc = await schedules.findOneAndUpdate(
     { _id: scheduleId, groupId },
-    { $set: { callerNote: input.callerNote, ...(required ? { screenShareUrl: input.screenShareUrl } : {}), updatedAt: new Date() } },
+    { $set: { callerNote: input.callerNote, doneAt, ...(required ? { screenShareUrl: input.screenShareUrl } : {}), updatedAt: new Date() } },
     { returnDocument: "after" },
   );
   return doc ? (await withLinks(groupId, [doc]))[0] : null;

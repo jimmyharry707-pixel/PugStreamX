@@ -32,6 +32,8 @@ export type CalendarEvent = {
   time: string;
   /** A second line, e.g. the client company. */
   detail?: string;
+  /** Shows a "Done" badge (the Caller has finished it). */
+  done?: boolean;
 };
 
 /**
@@ -267,7 +269,8 @@ export function PsCalendarTimeGrid({
                     <button
                       key={event.key}
                       type="button"
-                      aria-label={`${event.title}, ${event.time}${event.detail ? `, ${event.detail}` : ""}`}
+                      aria-label={`${event.title}, ${event.time}${event.detail ? `, ${event.detail}` : ""}${event.done ? ", done" : ""}`}
+                      data-done={event.done || undefined}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (!skipEventClick.current) onEventClick(event.id);
@@ -334,7 +337,17 @@ export function PsCalendarTimeGrid({
                         eventPreview?.key === event.key && "opacity-40",
                       )}
                     >
-                      <span className="truncate font-semibold">{event.title}</span>
+                      <span className="flex min-w-0 items-center gap-1">
+                        <span className="truncate font-semibold">{event.title}</span>
+                        {event.done && (
+                          <span className="ml-auto inline-flex shrink-0 items-center gap-0.5 rounded-full bg-success-500/20 px-1.5 text-[10px] font-semibold text-success-300 ring-1 ring-inset ring-success-400/40">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="size-2.5" aria-hidden>
+                              <path d="m5 12 5 5 9-10" />
+                            </svg>
+                            Done
+                          </span>
+                        )}
+                      </span>
                       {minutes >= 45 && <span className="truncate text-event-200">{event.time}</span>}
                       {minutes >= 75 && event.detail && <span className="truncate text-event-200">{event.detail}</span>}
                       {/* Drag the bottom edge to change when it ends. */}

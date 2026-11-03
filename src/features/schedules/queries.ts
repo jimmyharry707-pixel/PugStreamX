@@ -33,6 +33,7 @@ export function toSchedule(doc: ScheduleDoc, linked: LinkedSchedule[] = []): Sch
     linked,
     note: doc.note,
     callerNote: doc.callerNote ?? null,
+    doneAt: doc.doneAt?.toISOString() ?? null,
   };
 }
 

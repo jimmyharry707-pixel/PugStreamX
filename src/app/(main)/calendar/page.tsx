@@ -7,7 +7,7 @@ import { PsCalendar } from "@/features/calendar/components/ps-calendar";
 import { listGroups } from "@/features/groups/queries";
 import { calendarAccess } from "@/features/schedules/access";
 
-export const metadata: Metadata = { title: "Calendar" };
+export const metadata: Metadata = { title: "Schedule" };
 
 export default async function CalendarPage() {
   const user = await requireCompleteProfile();

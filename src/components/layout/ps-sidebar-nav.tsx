@@ -16,7 +16,7 @@ type NavItem = { label: string; icon: ReactNode } & ({ href: string } | { soon: 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/", icon: icon(<path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z" />) },
   { label: "Tasks", soon: true, icon: icon(<><rect x="4" y="4" width="16" height="16" rx="3" /><path d="m8.5 12 2.5 2.5 4.5-5" /></>) },
-  { label: "Calendar", href: CALENDAR_PATH, icon: icon(<><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4M8.5 14h.01M12 14h.01M15.5 14h.01M8.5 17h.01M12 17h.01" /></>) },
+  { label: "Schedule", href: CALENDAR_PATH, icon: icon(<><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4M8.5 14h.01M12 14h.01M15.5 14h.01M8.5 17h.01M12 17h.01" /></>) },
   { label: "Plans", soon: true, icon: icon(<><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3" /></>) },
   { label: "Discussions", soon: true, icon: icon(<path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v6a2.5 2.5 0 0 1-2.5 2.5H11l-4 4v-4h0.5A2.5 2.5 0 0 1 5 12.5z" />) },
   { label: "Performance", soon: true, icon: icon(<path d="M5 19V11M10 19V6M15 19v-5M20 19V9" />) },

@@ -39,6 +39,11 @@ export type ScheduleDoc = {
   note: string | null;
   /** The Caller's note. */
   callerNote?: string | null;
+  /**
+   * When the Caller clicked Done (after adding the screen share link, if required, and their
+   * note). Null or missing while not done.
+   */
+  doneAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -67,6 +72,8 @@ export type Schedule = Omit<ScheduleInput, "start" | "end" | "timeZone" | "meeti
   meetingUrl: string | null;
   screenShareUrl: string | null;
   callerNote: string | null;
+  /** When the Caller marked it done (ISO), or null. */
+  doneAt: string | null;
   /** The schedules `linkedUids` point to, in order (any that no longer exist are left out). */
   linked: LinkedSchedule[];
 };

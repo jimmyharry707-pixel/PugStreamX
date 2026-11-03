@@ -2,11 +2,12 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import { PsAlert } from "@/components/ui/ps-alert";
+import { PsBadge } from "@/components/ui/ps-badge";
 import { PsButton } from "@/components/ui/ps-button";
 import { timeZoneLabel } from "@/features/calendar/time-zone";
 import { confirm } from "@/features/confirm/store";
 import { removeSchedule } from "../actions";
-import { formatScheduleDate, formatShortDate, formatTimeRange, safeUrl } from "../format";
+import { formatScheduleDate, formatShortDate, formatShortDateTime, formatTimeRange, safeUrl } from "../format";
 import type { CalendarMode, Schedule } from "../types";
 import { PsCallerForm } from "./ps-caller-form";
 
@@ -141,6 +142,17 @@ export function PsScheduleDetails({
         <Row label="Schedule ID">
           <ScheduleId uid={schedule.uid} />
         </Row>
+        {/* The Caller clicks Done once the screen share link (if required) and their note are in. */}
+        <Row label="Status">
+          {schedule.doneAt ? (
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <PsBadge variant="success">Done</PsBadge>
+              <span className="text-xs text-gray-400">{formatShortDateTime(new Date(schedule.doneAt), timeZone)}</span>
+            </span>
+          ) : (
+            <span className="text-gray-500">Not done yet</span>
+          )}
+        </Row>
         <Row label="Client company">{schedule.clientCompany}</Row>
         <Row label="Interviewer">{schedule.interviewer}</Row>
         <Row label="Meeting">
@@ -158,7 +170,8 @@ export function PsScheduleDetails({
           ) : schedule.screenShareUrl ? (
             <Link url={schedule.screenShareUrl} />
           ) : (
-            <span className="text-warning-300">Required · the Caller hasn&apos;t added the link yet</span>
+            // Required, but the Caller hasn't added the link yet.
+            <PsBadge variant="danger">Required</PsBadge>
           )}
         </Row>
         <Row label="Linked schedules">

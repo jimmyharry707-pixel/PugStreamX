@@ -100,6 +100,9 @@ src/
   - Optional (stored as `null` when empty): `note` (the PM's). `linkedUids` is a list (empty when none).
   - **Screen share:** the PM sets only the `screenShareRequired` switch (`PsSwitch`). The Caller adds `screenShareUrl`, and only while it's required. Turning it off clears the link. Older schedules with a link count as required.
   - **`callerNote`** ("Note (Caller)") is written by Callers. The PM, the founder and Callers all see it.
+  - **Done (`doneAt`):** the Caller adds the screen share link (if required) before the interview and their note after it, then clicks **Done** (`intent=done` in `saveCallerFields`).
+    - Done needs both filled in, and a done schedule keeps needing them on later saves. **Undo done** (`intent=reopen`) clears `doneAt`.
+    - `Schedule.doneAt` is an ISO string or null. Everyone sees it: a green "Done" pill on the calendar block (`CalendarEvent.done`) and a Status row in the details. PM edits leave it as is.
   - Older schedules may lack `meetingUrl`. `Schedule.meetingUrl` is then `null` and shows "—"; Edit requires it.
 - **Schedule ID (`uid`):** every schedule has a unique **10-digit** ID (e.g. `"4829103756"`, a string; `SCHEDULE_UID_PATTERN`), the ID members see.
   - It's shown in the details with a Copy button, and it's what "Linked schedules" takes.
