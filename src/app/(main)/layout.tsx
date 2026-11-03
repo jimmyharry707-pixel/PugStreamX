@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { PsAppShell } from "@/components/layout/ps-app-shell";
 import { PsSidebarNav } from "@/components/layout/ps-sidebar-nav";
+import { PsChatUnreadBadge } from "@/features/communication/chat/components/ps-chat-unread-badge";
+import { CHAT_PATH } from "@/features/communication/chat/constants";
 import { PsAdminNavItem } from "@/features/organization/admin/components/ps-admin-nav-item";
 import { PsCurrentUserMenu, PsCurrentUserMenuSkeleton } from "@/features/account/profile/components/ps-current-user-menu";
 import { PsProfileGate } from "@/features/account/profile/components/ps-profile-gate";
@@ -14,6 +16,7 @@ export default function MainLayout({ children }: LayoutProps<"/">) {
     <PsAppShell
       sidebar={
         <PsSidebarNav
+          badges={{ [CHAT_PATH]: <PsChatUnreadBadge /> }}
           adminItem={
             <Suspense fallback={null}>
               <PsAdminNavItem />

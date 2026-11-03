@@ -5,8 +5,11 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
 
-/** One link in the left panel. Highlighted while its page (or a page under it) is open. */
-export function PsSidebarLink({ href, label, icon }: { href: string; label: string; icon: ReactNode }) {
+/**
+ * One link in the left panel. Highlighted while its page (or a page under it) is open. `badge`
+ * is shown at its right end (e.g. an unread count).
+ */
+export function PsSidebarLink({ href, label, icon, badge }: { href: string; label: string; icon: ReactNode; badge?: ReactNode }) {
   const pathname = usePathname();
   const active = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 
@@ -21,6 +24,7 @@ export function PsSidebarLink({ href, label, icon }: { href: string; label: stri
     >
       {icon}
       {label}
+      {badge}
     </Link>
   );
 }

@@ -1,0 +1,45 @@
+[
+  { "category": "Greeting", "context": "Hello!" },
+  { "category": "Greeting", "context": "Good morning!" },
+  { "category": "Greeting", "context": "Good afternoon!" },
+  { "category": "Greeting", "context": "Good evening!" },
+  { "category": "Greeting", "context": "Thank you!" },
+  { "category": "Greeting", "context": "Have a good day!" },
+
+  { "category": "Reply", "context": "Yes." },
+  { "category": "Reply", "context": "No." },
+  { "category": "Reply", "context": "Okay, got it." },
+  { "category": "Reply", "context": "Please wait a moment." },
+  { "category": "Reply", "context": "I'll check and get back to you." },
+  { "category": "Reply", "context": "Could you check this, please?" },
+  { "category": "Reply", "context": "Done." },
+
+  { "category": "Schedule", "context": "Please check the schedule." },
+  { "category": "Schedule", "context": "I've added a new schedule." },
+  { "category": "Schedule", "context": "I've updated the schedule." },
+  { "category": "Schedule", "context": "The schedule has been moved to another time." },
+  { "category": "Schedule", "context": "The schedule has been cancelled." },
+  { "category": "Schedule", "context": "Can you take this schedule?" },
+  { "category": "Schedule", "context": "I can take this schedule." },
+  { "category": "Schedule", "context": "I can't take this schedule." },
+
+  { "category": "Interview", "context": "I'm ready for the interview." },
+  { "category": "Interview", "context": "The interview has started." },
+  { "category": "Interview", "context": "The interview went well." },
+  { "category": "Interview", "context": "The interview didn't go well." },
+  { "category": "Interview", "context": "The interview has finished." },
+  { "category": "Interview", "context": "The interviewer didn't join." },
+  { "category": "Interview", "context": "The interview was rescheduled by the client." },
+  { "category": "Interview", "context": "I've added my note to the schedule." },
+
+  { "category": "Screen share", "context": "I've added the screen share link." },
+  { "category": "Screen share", "context": "Please add the screen share link." },
+  { "category": "Screen share", "context": "The screen share link doesn't work." },
+
+  { "category": "Problem", "context": "I'm running late." },
+  { "category": "Problem", "context": "I have a connection problem." },
+  { "category": "Problem", "context": "The meeting link doesn't work." },
+  { "category": "Problem", "context": "I can't open the resume." },
+  { "category": "Problem", "context": "I can't open the job description." },
+  { "category": "Problem", "context": "Please call me." }
+]

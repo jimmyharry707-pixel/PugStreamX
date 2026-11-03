@@ -10,6 +10,8 @@ export const COLLECTIONS = {
   sessions: "ps_sessions",
   schedules: "ps_schedules",
   groups: "ps_groups",
+  conversations: "ps_conversations",
+  messages: "ps_messages",
 } as const satisfies Record<string, `ps_${string}`>;
 
 export type CollectionKey = keyof typeof COLLECTIONS;
@@ -60,5 +62,15 @@ export const INDEXES: Record<CollectionKey, IndexDescription[]> = {
   groups: [
     // Group names are unique ignoring case.
     { key: { nameKey: 1 }, unique: true },
+  ],
+  conversations: [
+    // One direct conversation per pair of members ("<smaller id>:<larger id>").
+    { key: { key: 1 }, unique: true },
+    // A member's conversations, most recent first.
+    { key: { memberIds: 1, lastMessageAt: -1 } },
+  ],
+  messages: [
+    // A conversation's messages in order (and counting unread ones).
+    { key: { conversationId: 1, createdAt: -1 } },
   ],
 };

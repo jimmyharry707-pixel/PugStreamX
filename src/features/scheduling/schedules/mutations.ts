@@ -33,8 +33,8 @@ export async function createSchedule(groupId: ObjectId, userId: ObjectId, input:
   }
 }
 
-/** Moved to end in the future: the interview hasn't happened yet, so it's no longer done. */
-const notDoneIfAhead = (end: Date) => (end.getTime() > Date.now() ? { doneAt: null } : {});
+/** Moved to start in the future: the interview hasn't started yet, so it's no longer done. */
+const notDoneIfAhead = (start: Date) => (start.getTime() > Date.now() ? { doneAt: null } : {});
 
 /** A Profile Manager's edit. Null if the schedule isn't in the group. */
 export async function updateSchedule(groupId: ObjectId, scheduleId: ObjectId, input: ScheduleInput): Promise<Schedule | null> {
@@ -43,7 +43,7 @@ export async function updateSchedule(groupId: ObjectId, scheduleId: ObjectId, in
     { _id: scheduleId, groupId },
     {
       // Screen share no longer required: the Caller's link goes too.
-      $set: { ...input, ...(input.screenShareRequired ? {} : { screenShareUrl: null }), ...notDoneIfAhead(input.end), updatedAt: new Date() },
+      $set: { ...input, ...(input.screenShareRequired ? {} : { screenShareUrl: null }), ...notDoneIfAhead(input.start), updatedAt: new Date() },
       // The earlier single link is replaced by the list.
       $unset: { linkedUid: "" },
     },
@@ -79,7 +79,7 @@ export async function rescheduleSchedule(groupId: ObjectId, scheduleId: ObjectId
   const schedules = await getCollection<ScheduleDoc>("schedules");
   const doc = await schedules.findOneAndUpdate(
     { _id: scheduleId, groupId },
-    { $set: { start, end, ...notDoneIfAhead(end), updatedAt: new Date() } },
+    { $set: { start, end, ...notDoneIfAhead(start), updatedAt: new Date() } },
     { returnDocument: "after" },
   );
   return doc ? (await withLinks(groupId, [doc]))[0] : null;

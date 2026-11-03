@@ -18,11 +18,14 @@ export function PsProfileMenu({
   fullName,
   email,
   avatarUrl,
+  role,
 }: {
   displayName: string;
   fullName: string;
   email: string;
   avatarUrl: string;
+  /** The role's label, e.g. "Profile Manager". */
+  role: string;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -71,7 +74,7 @@ export function PsProfileMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        aria-label={`Account menu for ${displayName}`}
+        aria-label={`Account menu for ${displayName}, ${role}`}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown") {
@@ -82,7 +85,15 @@ export function PsProfileMenu({
         className="flex items-center gap-2 rounded-full border border-white/10 bg-gray-900 py-1 pl-1 pr-2.5 transition hover:border-white/20 hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-brand-400 aria-expanded:border-brand-400/50"
       >
         <PsAvatar name={displayName} src={avatarUrl} />
-        <span className="hidden max-w-40 truncate text-sm font-medium text-gray-200 sm:block">{displayName}</span>
+        {/* Phones show only the photo; the menu shows the name and role. */}
+        <span className="hidden min-w-0 max-w-40 text-left leading-tight sm:block">
+          <span data-topbar-name className="block truncate text-sm font-medium text-gray-200">
+            {displayName}
+          </span>
+          <span data-topbar-role className="block truncate text-[11px] text-gray-400">
+            {role}
+          </span>
+        </span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="size-4 text-gray-400" aria-hidden>
           <path d="m7 10 5 5 5-5" />
         </svg>
@@ -102,6 +113,7 @@ export function PsProfileMenu({
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-gray-100">{fullName}</p>
               <p className="truncate text-xs text-gray-400">{email}</p>
+              <p className="mt-1 truncate text-[11px] font-medium text-brand-300">{role}</p>
             </div>
           </div>
           <Link role="menuitem" href={PROFILE_PATH} className={itemClass} onClick={() => setOpen(false)}>

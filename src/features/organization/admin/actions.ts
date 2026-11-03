@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { requireSuperAdmin } from "@/features/account/auth/dal";
 import { deleteUserSessions } from "@/features/account/auth/session";
 import { deleteAvatar } from "@/features/account/profile/avatar";
+import { deleteConversationsOf } from "@/features/communication/chat/mutations";
 import { flashSnackbar } from "@/features/shared/snackbar/flash";
 import { deleteUser, updateUserActive, updateUserRole } from "@/features/account/users/mutations";
 import { roleLabel } from "@/features/account/users/roles";
@@ -79,6 +80,7 @@ export async function removeUser(_prev: AdminActionResult, formData: FormData): 
   }
   await deleteUserSessions(id);
   if (result.user.profile?.avatarId) await deleteAvatar(result.user.profile.avatarId);
+  await deleteConversationsOf(id);
 
   const name = result.user.profile?.displayName ?? result.user.email;
   await flashSnackbar({ type: "success", message: `${name}'s account has been deleted.` });

@@ -96,10 +96,10 @@ export type CallerFormState =
   | undefined;
 
 /**
- * A Caller's part, which follows the interview (`end`):
- * - before it ends: Save the screen share link (only while required);
- * - after it ends: Done saves "Note (Caller)" (required) and marks the schedule done; Undo done
- *   ("reopen") takes that back.
+ * A Caller's part, which follows the interview's `start` (it may finish early):
+ * - before it starts: Save the screen share link (only while required);
+ * - once it has started: Done saves "Note (Caller)" (required) and marks the schedule done; Undo
+ *   done ("reopen") takes that back.
  * Callers only.
  */
 export async function saveCallerFields(_prev: CallerFormState, formData: FormData): Promise<CallerFormState> {
@@ -112,18 +112,19 @@ export async function saveCallerFields(_prev: CallerFormState, formData: FormDat
   const { scheduleId, intent, screenShareUrl, callerNote } = parsed.data;
   const current = await findScheduleDoc(groupId, new ObjectId(scheduleId));
   if (!current) return failed({ form: ["This schedule no longer exists."] });
-  const ended = current.end.getTime() <= Date.now();
+  // The interview may finish early, so the note and Done open when it starts.
+  const started = current.start.getTime() <= Date.now();
 
   let changes: Parameters<typeof updateCallerFields>[2];
   if (intent === "reopen") {
     changes = { doneAt: null };
   } else if (intent === "done") {
-    if (!ended) return failed({ form: ["You can mark it done after the interview."] });
+    if (!started) return failed({ form: ["You can mark it done once the interview has started."] });
     if (!callerNote) return failed({ callerNote: ["Add your note before marking it done."] });
     // Already done (a repeated Done): keep when it was first marked.
     changes = { callerNote, doneAt: current.doneAt ?? new Date() };
   } else {
-    if (ended) return failed({ form: ["The interview is over: add your note and click Done."] });
+    if (started) return failed({ form: ["The interview has started: add your note and click Done."] });
     if (!(current.screenShareRequired ?? !!current.screenShareUrl)) return failed({ form: ["This schedule doesn't need a screen share link."] });
     changes = { screenShareUrl };
   }

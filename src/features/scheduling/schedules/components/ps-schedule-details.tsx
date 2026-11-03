@@ -9,7 +9,7 @@ import { confirm } from "@/features/shared/confirm/store";
 import { removeSchedule } from "../actions";
 import { formatScheduleDate, formatShortDate, formatShortDateTime, formatTimeRange, safeUrl } from "../format";
 import type { CalendarMode, Schedule } from "../types";
-import { useEnded } from "../use-ended";
+import { useStarted } from "../use-started";
 import { PsCallerForm } from "./ps-caller-form";
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
@@ -91,7 +91,7 @@ export function PsScheduleDetails({
   const end = new Date(schedule.end);
   const ownZone = schedule.timeZone ?? timeZone;
   const linked = schedule.linked;
-  const ended = useEnded(schedule.end);
+  const started = useStarted(schedule.start);
 
   async function onDelete() {
     const ok = await confirm({
@@ -171,8 +171,8 @@ export function PsScheduleDetails({
             <span className="text-gray-500">Not required</span>
           ) : schedule.screenShareUrl ? (
             <Link url={schedule.screenShareUrl} />
-          ) : ended ? (
-            // Too late to add it now (the Caller can't after the interview).
+          ) : started ? (
+            // Too late to add it now (the Caller can't once the interview has started).
             <span className="text-gray-500">Not added</span>
           ) : (
             // Required, but the Caller hasn't added the link yet.

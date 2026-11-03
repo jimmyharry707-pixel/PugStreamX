@@ -9,7 +9,7 @@ import { PsTextarea } from "@/components/ui/ps-textarea";
 import { saveCallerFields } from "../actions";
 import { NOTE_MAX, URL_MAX } from "../constants";
 import type { CallerIntent as Intent, Schedule } from "../types";
-import { useEnded } from "../use-ended";
+import { useStarted } from "../use-started";
 
 const PENDING: Record<Intent, string> = { save: "Saving…", done: "Marking done…", reopen: "Undoing…" };
 
@@ -19,22 +19,23 @@ const MESSAGE_PHASE: Record<Intent, Phase> = { save: "before", done: "done", reo
 type Phase = "before" | "after" | "done";
 
 /**
- * A Caller's part of a schedule, in its details. It follows the interview (the schedule's end):
- * - before it ends: only the screen share link (when the Profile Manager requires one) and Save;
- * - after it ends: only "Note (Caller)" and **Done**, which marks the schedule done (shown on the
- *   calendar);
+ * A Caller's part of a schedule, in its details. It follows the interview's start (an interview
+ * may finish early, so the Caller can wrap up as soon as it has started):
+ * - before it starts: only the screen share link (when the Profile Manager requires one) and Save;
+ * - once it has started: only "Note (Caller)" and **Done**, which marks the schedule done (shown
+ *   on the calendar);
  * - once done: Undo done.
  * The server (`saveCallerFields`) enforces the same. Calls `onSaved` with the updated schedule.
  */
 export function PsCallerForm({ schedule, onSaved }: { schedule: Schedule; onSaved: (schedule: Schedule) => void }) {
   const [state, action, pending] = useActionState(saveCallerFields, undefined);
   const [intent, setIntent] = useState<Intent>("save");
-  // An open form switches to the note the moment the interview ends.
-  const ended = useEnded(schedule.end);
+  // An open form switches to the note the moment the interview starts.
+  const started = useStarted(schedule.start);
   const values = state?.values ?? { screenShareUrl: schedule.screenShareUrl ?? "", callerNote: schedule.callerNote ?? "" };
   const errors = state?.errors ?? {};
-  const phase: Phase = schedule.doneAt ? "done" : ended ? "after" : "before";
-  // E.g. "Saved." from adding the link isn't shown under the note once the interview ends.
+  const phase: Phase = schedule.doneAt ? "done" : started ? "after" : "before";
+  // E.g. "Saved." from adding the link isn't shown under the note once the interview starts.
   const message = state?.message && state.intent && MESSAGE_PHASE[state.intent] === phase ? state.message : null;
 
   useEffect(() => {
@@ -70,7 +71,7 @@ export function PsCallerForm({ schedule, onSaved }: { schedule: Schedule; onSave
             {button("save", "Save")}
           </>
         ) : (
-          <p className="text-sm text-gray-400">Nothing to add before the interview. When it ends, add your note here and click Done.</p>
+          <p className="text-sm text-gray-400">Nothing to add before the interview. Once it starts, add your note here and click Done.</p>
         ))}
 
       {phase === "after" && (

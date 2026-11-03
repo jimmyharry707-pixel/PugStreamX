@@ -25,7 +25,7 @@ before starting work, and add a new summary when the user asks to save the chat 
   - Form controls go inside `PsField` (label + error + hint), which passes `id` and `aria-*` props to the control: `<PsField id="x" label="X" errors={e}>{(p) => <PsTextarea name="x" {...p} />}</PsField>`. `PsFormField` is the shortcut for plain inputs.
   - `src/components/layout/`: app frame pieces:
     - `PsAppShell`: the main-site frame (left panel, topbar, main container; the panel becomes a drawer below the `lg` breakpoint).
-    - `PsSidebarNav`: left-panel navigation. Its items live in `NAV_ITEMS`; give an item an `href` once its page exists (until then it shows "Soon"). Role-dependent links go in its `adminItem` slot (shown at the bottom, inside `<Suspense>`), e.g. `PsAdminNavItem`.
+    - `PsSidebarNav`: left-panel navigation. Its items live in `NAV_ITEMS`; add an item only once its page exists (no placeholder buttons). Role-dependent links go in its `adminItem` slot (shown at the bottom, inside `<Suspense>`), e.g. `PsAdminNavItem`. Its `badges` prop puts a client component at the right of an item, by href (e.g. `PsChatUnreadBadge` on Chat), so the nav itself stays feature-free.
     - `PsSidebarMenu`: a left-panel button that opens a popup menu of links above it (e.g. Admin > Users). The button is highlighted while one of its pages is open.
     - `PsSidebarLink`: one left-panel link, highlighted while its page is open.
     - `PsBrand`: the logo. `PsContainer`: a max-width wrapper.
@@ -69,6 +69,7 @@ src/
   | `account/` | `auth` (sign-in, sessions), `profile` (required profile, avatar), `users` (user documents, roles) |
   | `scheduling/` | `calendar` (the week grid, dates, time zones), `schedules` (the events on it) |
   | `organization/` | `groups`, `admin` (the super-admin panel) |
+  | `communication/` | `chat` (direct messages) |
   | `shared/` | app-wide UI services used everywhere: `confirm` (confirm popup), `snackbar` |
 
 - A new feature (follows, chat, tasks, …) gets its own folder in the category it belongs to (e.g. `src/features/scheduling/tasks/`), using the same file layout. Add a new category only for a new area that fits none of these, and list it in the table.
@@ -109,14 +110,14 @@ src/
   - Optional (stored as `null` when empty): `note` (the PM's). `linkedUids` is a list (empty when none).
   - **Screen share:** the PM sets only the `screenShareRequired` switch (`PsSwitch`). The Caller adds `screenShareUrl`, and only while it's required. Turning it off clears the link. Older schedules with a link count as required.
   - **`callerNote`** ("Note (Caller)") is written by Callers. The PM, the founder and Callers all see it.
-  - **Done (`doneAt`):** the Caller form (`PsCallerForm`) follows the schedule's `end`. Its `data-phase` is `before`, `after` or `done`.
-    - **Before the interview ends:** only the screen share link (when required) and Save. Without a required link there's nothing to fill in; a line says so.
-    - **After it ends:** only "Note (Caller)" and **Done** (`intent=done`). Done needs the note, saves it and sets `doneAt`.
+  - **Done (`doneAt`):** the Caller form (`PsCallerForm`) follows the schedule's **`start`**, not its end, because an interview can finish early. Its `data-phase` is `before`, `after` or `done`.
+    - **Before the interview starts:** only the screen share link (when required) and Save. Without a required link there's nothing to fill in; a line says so.
+    - **Once it has started:** only "Note (Caller)" and **Done** (`intent=done`). Done needs the note, saves it and sets `doneAt`.
     - **Once done:** only **Undo done** (`intent=reopen`), which clears `doneAt` and keeps the note.
-    - `saveCallerFields` enforces the same with the server clock: links only before the end, the note and Done only after.
-    - The form switches at the exact end time (`useEnded()` in `use-ended.ts`), not on a minute tick. Success messages only show in the state they came from (`CallerFormState.intent`).
-    - After the interview, a required link that was never added shows "Not added" in grey, not the red "Required".
-    - A repeated Done keeps the first `doneAt`. A PM moving a schedule so it ends in the future (Edit or drag) clears `doneAt`.
+    - `saveCallerFields` enforces the same with the server clock: links only before the start, the note and Done from the start on.
+    - The form switches at the exact start time (`useStarted()` in `use-started.ts`), not on a minute tick. Success messages only show in the state they came from (`CallerFormState.intent`).
+    - Once the interview has started, a required link that was never added shows "Not added" in grey, not the red "Required".
+    - A repeated Done keeps the first `doneAt`. A PM moving a schedule so it starts in the future (Edit or drag) clears `doneAt`.
     - `Schedule.doneAt` is an ISO string or null. Everyone sees it: a green "Done" pill on the calendar block (`CalendarEvent.done`) and a Status row in the details. PM edits leave it as is.
   - Older schedules may lack `meetingUrl`. `Schedule.meetingUrl` is then `null` and shows "—"; Edit requires it.
 - **Schedule ID (`uid`):** every schedule has a unique **10-digit** ID (e.g. `"4829103756"`, a string; `SCHEDULE_UID_PATTERN`), the ID members see.
@@ -162,6 +163,31 @@ src/
 - Blocks use the `event` color role. Overlapping blocks share the column width (`layoutEvents` in `features/scheduling/calendar/event-layout.ts`).
 - To add a schedule field: add it to `SCHEDULE_FIELDS`, `scheduleSchema`, `ScheduleDoc` / `ScheduleInput` / `toSchedule`, `PsScheduleForm`, `PsScheduleDetails`, and `editDefaults` in `ps-calendar.tsx`.
 
+### Chat (`src/features/communication/chat/`)
+
+- **Direct messages only** (1-to-1, plain text), at `/chat` (`CHAT_PATH`). The open conversation is in the URL (`?with=<memberId>`, `window.history.pushState`); on phones the list and the conversation show one at a time.
+- **Who:** members chat only with **their own group and the founders** (`messageableBy()` in `queries.ts`, used by `listChatMembers` and `findChatMember`). Both must be active with a complete profile.
+  - Founders (role 0) can message everyone, in any group or none. A member without a group can message only founders.
+  - It's symmetric: whoever can message you, you can message back.
+  - The New message picker lists only those people, divided by category: **Founders** first (each with a "Founder" label), then each group by name, then "No group" (only founders see other groups and No group). Other rows show the member's role. `ChatMember` carries `role`, `isFounder` and `groupName` for this. The conversation header shows the same ("@name · Caller · Group A"). `sendChatMessage` and `GET /api/chat/messages` check it again, and another group's member gets a 404.
+  - If someone is deactivated or moves to another group later, the history stays readable but they can't be messaged (`canSend: false`; the composer says why).
+- **Data:** `ps_conversations` holds one conversation per pair. Its `key` is `"<smaller id>:<larger id>"` (`pairKey`, unique index); it's created by an upsert with the first message. It keeps `lastMessage` / `lastMessageAt` for the list, and `readAt[<memberId>]` for unread counts. `ps_messages` holds the messages (`MESSAGE_MAX` characters, 
+ stored as 
+).
+  - Every read is filtered by the viewer's id, so members only see their own conversations.
+  - Deleting an account (Admin) also deletes its conversations and their messages (`deleteConversationsOf`).
+- **Allowed messages:** unless a founder is in the conversation (writing to a founder, or a founder writing), a message must be one of the allowed messages in **`src/static/data/chat-messages.json`**, word for word.
+  - That file is a list of `{ "category": "Schedule", "context": "Please check the schedule." }`. Edit it to change what members can say; it's read by `templates.ts` (`CHAT_TEMPLATES`, `isTemplateMessage`, `searchTemplates`, `allowsFreeText`).
+  - `sendChatMessage` refuses anything else. `GET /api/chat/messages` returns `freeText`, so the page knows which box to show.
+  - `PsChatComposer`: with a founder, a free text box (Enter sends, Shift+Enter adds a line). Otherwise a search box (`role=combobox`): typing filters the messages (every word, in the text or the category), shown by category above it. ↑/↓ move, Enter or a click picks one into the box, Enter again sends, Esc closes. Send stays off until the box holds a listed message.
+- **Reads:** `GET /api/chat/conversations` (list + unread counts) and `GET /api/chat/messages?with=&before=` (pages of `MESSAGES_PAGE`, oldest first; "Load earlier messages"). **Writes:** the `sendChatMessage` and `markChatRead` actions.
+- **Live updates:** `GET /api/chat/stream` is a server-sent event stream of `ChatStreamEvent`s for the signed-in member: `message` (to or from them) and `read` (they read a conversation in another tab).
+  - Actions publish to an in-process bus (`bus.ts`, an `EventEmitter` on `globalThis`). **It only reaches streams in the same server process**; running several instances needs a shared channel (MongoDB change streams on a replica set, or Redis).
+  - Each stream ends after 5 minutes and the browser reconnects (which re-checks the session). After a reconnect, listeners get `resync` and load again, since events may have been missed. The stream is sent `no-transform` so compression can't hold events back.
+  - In the browser, `useChatStream()` shares one `EventSource` per tab between the Chat page and the left-panel badge.
+- **Read state:** opening a conversation marks it read, and so do new messages arriving while it's open in a visible tab. The left panel's Chat item shows the total unread (`PsChatUnreadBadge`, "99+" above `UNREAD_MAX`).
+- **UI:** `PsChat` (page) = `PsChatList` + `PsChatThread` (with `PsChatComposer`), plus `PsChatMemberPicker` (New message, with search). A message shows at once greyed out ("Sending…") until the server confirms it; if sending fails, the text goes back into the box. Links in messages become clickable (`splitLinks`, http(s) only, new tab, `noopener noreferrer`); message text is never rendered as HTML.
+
 ## 4. Authentication
 
 - Custom email + password auth. Users live in `ps_users`; sessions live in `ps_sessions`, stored as SHA-256 hashes of the random token in the `ps_session` cookie.
@@ -187,7 +213,7 @@ src/
 
 - After their first sign-in (and on every sign-in until done) users must complete their profile at `/complete-profile`: avatar, full name, display name (unique, case-insensitive), birthday, address, phone (with country). All required. It's stored as `UserDoc.profile`; `PublicUser.profileComplete` says whether it's done.
 - **The main site lives in the `src/app/(main)/` route group.** Its layout renders `PsAppShell`. The left panel and topbar are static; the topbar profile badge (`PsCurrentUserMenu`) and the page content (`PsProfileGate`) wait for the session and redirect incomplete or signed-out users.
-- The topbar profile badge opens a menu with **Update profile** (`/profile`, `PROFILE_PATH`) and **Sign out**. `/profile` reuses `PsProfileForm` with `mode="update"`. The photo is optional there, and a replaced photo is deleted only after the new one is saved.
+- The topbar profile badge shows the photo, display name and role label (`roleLabel()`, e.g. "Profile Manager"; "No role" until one is given). Phones show only the photo; the menu's header always shows the role. The badge opens a menu with **Update profile** (`/profile`, `PROFILE_PATH`) and **Sign out**. `/profile` reuses `PsProfileForm` with `mode="update"`. The photo is optional there, and a replaced photo is deleted only after the new one is saved.
 - Avatars are served by `/api/avatars/[id]`, only to signed-in members with a complete profile. Build URLs with `avatarUrl(id)` (`features/account/profile/constants.ts`); `PublicUser.profile.avatarUrl` already has one. Render them with `PsAvatar src={...}`, which uses a plain `<img>` because Next's image optimizer can't fetch auth-protected URLs.
 - **Every main-site page, server action and route handler must also call `requireCompleteProfile()`** (`features/account/auth/dal.ts`) itself. Layouts don't re-run on client-side navigation, so the layout gate alone isn't a security boundary.
 - Pages outside `(main)` that signed-in users with incomplete profiles may use (like `/complete-profile`) go in `src/app/(auth)/`.
@@ -197,6 +223,7 @@ src/
 ## 5. CSS lives in `src/static/css/`, one file per unit
 
 - Do **not** add styles to `src/app/globals.css`. It only loads Tailwind and the base files.
+- `src/static/data/` holds editable JSON data the app imports (e.g. `chat-messages.json`, the allowed chat messages).
 - `src/static/css/base/`: shared foundations, imported from `globals.css`.
   - `color.css`: **every color in the project** (see "Colors" below).
   - `theme.css`: other design tokens (fonts) in `@theme`.

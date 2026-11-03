@@ -6,11 +6,11 @@ import { useCallback, useSyncExternalStore } from "react";
 const MAX_TIMEOUT = 2 ** 31 - 1;
 
 /**
- * Whether `end` (an ISO time) has passed. It switches at that exact moment, like the server's
- * check in `saveCallerFields`, not on a minute tick. False while rendering on the server.
+ * Whether the interview has started (`start`, an ISO time). It switches at that exact moment, like
+ * the server's check in `saveCallerFields`, not on a minute tick. False while rendering on the server.
  */
-export function useEnded(end: string): boolean {
-  const time = new Date(end).getTime();
+export function useStarted(start: string): boolean {
+  const time = new Date(start).getTime();
   const subscribe = useCallback(
     (onChange: () => void) => {
       let id: ReturnType<typeof setTimeout> | undefined;
