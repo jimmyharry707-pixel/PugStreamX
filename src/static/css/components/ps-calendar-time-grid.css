@@ -60,7 +60,18 @@
     background-color: color-mix(in oklab, var(--color-weekend-400) 4%, transparent);
   }
 
-  /* Current time. --ps-calendar-now is the share of the day gone (0 to 1). */
+  /* An event block. Its place comes from variables: start and length as shares of the day
+     (0 to 1), and its column among overlapping events. */
+  .ps-calendar-time-grid__event {
+    position: absolute;
+    top: calc(var(--ps-event-start) * 100%);
+    height: calc(var(--ps-event-length) * 100% - 2px);
+    left: calc(var(--ps-event-column) / var(--ps-event-columns) * (100% - 4px));
+    width: calc((100% - 4px) / var(--ps-event-columns) - 2px);
+    min-height: 1rem;
+  }
+
+  /* Current time, above event blocks. --ps-calendar-now is the share of the day gone (0 to 1). */
   .ps-calendar-time-grid__now {
     position: absolute;
     inset-inline: 0;

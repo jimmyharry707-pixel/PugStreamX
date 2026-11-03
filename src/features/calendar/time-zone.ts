@@ -1,23 +1,16 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { isValidTimeZone } from "@/lib/utils/time-zone";
 
 // The calendar's time zone. The user's choice is remembered in this browser (localStorage);
 // "" means "follow the device". Like useNow(), it's null on the server and during hydration.
+// The time zone maths itself (zonedTime, zonedToUtc) is in lib/utils/time-zone.ts.
 
 const STORAGE_KEY = "ps_time_zone";
 
 export function deviceTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
-
-export function isValidTimeZone(timeZone: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en", { timeZone });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 // Used when storage is blocked (private windows, blocked site data).
@@ -54,31 +47,6 @@ export function setTimeZoneSetting(timeZone: string) {
     else localStorage.removeItem(STORAGE_KEY);
   } catch {}
   listeners.forEach((listener) => listener());
-}
-
-const partsFormats = new Map<string, Intl.DateTimeFormat>();
-
-/**
- * What a moment is in a time zone: the calendar day (as a local midnight Date, like every
- * date in the calendar) and the minutes since that day's midnight.
- */
-export function zonedTime(time: Date, timeZone: string): { day: Date; minutes: number } {
-  let format = partsFormats.get(timeZone);
-  if (!format) {
-    format = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      hourCycle: "h23",
-    });
-    partsFormats.set(timeZone, format);
-  }
-  const parts = format.formatToParts(time);
-  const get = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((p) => p.type === type)?.value);
-  return { day: new Date(get("year"), get("month") - 1, get("day")), minutes: get("hour") * 60 + get("minute") };
 }
 
 /** The zone's UTC offset at a moment: "GMT+8" (short) or "GMT+08:00" (long); "GMT" for UTC. */

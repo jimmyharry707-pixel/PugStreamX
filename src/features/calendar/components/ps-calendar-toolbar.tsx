@@ -14,15 +14,17 @@ const chevron = (d: string) => (
 
 /**
  * Calendar header: Today, previous / next week, the week's title (which opens a month calendar
- * popup for jumping to another week) and the time zone picker.
+ * popup for jumping to another week), Create and the time zone picker.
  */
 export function PsCalendarToolbar({
   date,
   today,
   onGo,
+  onCreate,
   timeZone,
   onTimeZoneChange,
 }: {
+  onCreate: () => void;
   date: Date;
   today: Date | null;
   /** Show the week holding this date; null for this week. */
@@ -54,6 +56,13 @@ export function PsCalendarToolbar({
         today={today}
         onSelect={onGo}
       />
+      {/* Phones use the floating button in PsCalendar instead. */}
+      <PsButton size="sm" onClick={onCreate} title="Create (C)" className="gap-1.5 py-1.5 pl-3 pr-4 max-sm:hidden">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" className="size-4" aria-hidden>
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        Create
+      </PsButton>
       <PsTimeZoneSelect value={timeZone} onChange={onTimeZoneChange} />
     </div>
   );

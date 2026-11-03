@@ -8,6 +8,7 @@ export const DB_NAME = "PugStreamX";
 export const COLLECTIONS = {
   users: "ps_users",
   sessions: "ps_sessions",
+  schedules: "ps_schedules",
 } as const satisfies Record<string, `ps_${string}`>;
 
 export type CollectionKey = keyof typeof COLLECTIONS;
@@ -41,5 +42,9 @@ export const INDEXES: Record<CollectionKey, IndexDescription[]> = {
     { key: { userId: 1 } },
     // MongoDB deletes sessions automatically once `expiresAt` has passed.
     { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ],
+  schedules: [
+    // The calendar loads one member's schedules for a week.
+    { key: { userId: 1, start: 1 } },
   ],
 };

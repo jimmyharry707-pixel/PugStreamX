@@ -77,7 +77,24 @@ src/
   - "Today" and the now-line come from `zonedTime(now, zone)` (`time-zone.ts`), never from `Date#getHours()` or `getDate()`.
   - The list comes from `Intl.supportedValuesOf("timeZone")`, which uses old canonical names (e.g. `Asia/Calcutta`). The stored value keeps that name, but `timeZoneName()` shows the current one ("Asia/Kolkata"), and search matches both.
 - Date maths goes through the pure helpers in `dates.ts`, which work on local days and `"YYYY-MM-DD"` keys. The week starts on `WEEK_STARTS_ON` (Monday). Weekends (`isWeekend`) are shown in rose: tinted columns in the week, rose dates in the popup.
-- Keyboard shortcuts as in Google Calendar: T (this week), J / N (next week), K / P (previous week).
+- Keyboard shortcuts as in Google Calendar: T (this week), J / N (next week), K / P (previous week), C (create a schedule).
+- Shared time zone maths lives in `src/lib/utils/time-zone.ts`, safe on the server and in the browser: `zonedTime`, `zonedParts`, `zonedToUtc` (wall time in a zone → exact moment) and `isValidTimeZone`.
+
+### Schedules (`src/features/schedules/`)
+
+- These are the events on the calendar (e.g. interviews), stored in `ps_schedules`. **Each member sees and changes only their own**: every query and mutation filters by `userId`, and the owner id is never sent to the browser (`toSchedule()`).
+- **Fields:**
+  - Required: `title`, `start` / `end`, `clientCompany`, `interviewer`, `resumeUrl`, `jobDescriptionUrl`.
+  - Optional (stored as `null` when empty): `screenShareUrl`, `note`.
+  - Links must be `http(s)` (`scheduleSchema`), and `safeUrl()` checks them again before rendering. Links open in a new tab with `rel="noopener noreferrer"`.
+- **Time:** `start` / `end` are exact moments (UTC `Date`s).
+  - The form sends `date`, `from`, `to` plus the calendar's `timeZone`, and `scheduleSchema` turns them into moments with `zonedToUtc`.
+  - The calendar shows them in the chosen zone, so changing zone moves the blocks. A block crossing midnight is drawn on both days.
+- **Reads:** the calendar changes weeks in the browser, so it loads schedules from `GET /api/schedules?from&to` (`useSchedules`), not from the page. That route returns 401 when signed out and allows at most `SCHEDULE_RANGE_MAX_DAYS`.
+- **Writes:** `saveSchedule` creates, or updates when the form has a `scheduleId`; `removeSchedule` deletes (after the confirm popup). The calendar then calls `reload()`.
+- **UI:** Create is a toolbar button on `sm`+ and a floating button on phones. Clicking an empty slot opens the form at that half hour. Clicking a block opens `PsScheduleDetails` with Edit and Delete.
+- Blocks use the `event` color role. Overlapping blocks share the column width (`layoutEvents` in `features/calendar/event-layout.ts`).
+- To add a schedule field: add it to `SCHEDULE_FIELDS`, `scheduleSchema`, `ScheduleDoc` / `ScheduleInput` / `toSchedule`, `PsScheduleForm`, `PsScheduleDetails`, and `editDefaults` in `ps-calendar.tsx`.
 
 ## 4. Authentication
 
@@ -141,6 +158,7 @@ src/
   | `success` | saved, active, done |
   | `warning` | inactive, needs attention |
   | `info` | notices, in progress |
+  | `event` | schedule blocks in the calendar |
   | `weekend` | Saturdays and Sundays in the calendar |
 
   Besides those: `white` and `black` (for overlays, e.g. `bg-white/10`, `bg-black/60`), plus `background` / `foreground` for the page.
