@@ -33,7 +33,7 @@ before starting work, and add a new summary when the user asks to save the chat 
     - `PsAppShell`: the main-site frame (left panel, topbar, main container; the panel becomes a drawer below the `lg` breakpoint).
     - `PsSidebarNav`: left-panel navigation. Its items live in `NAV_ITEMS`; add an item only once its page exists (no placeholder buttons). Role-dependent links go in its `adminItem` slot (shown at the bottom, inside `<Suspense>`), e.g. `PsAdminNavItem`. Its `badges` prop puts a client component at the right of an item, by href (e.g. `PsChatUnreadBadge` on Chat), so the nav itself stays feature-free.
     - `PsSidebarMenu`: a left-panel button that opens a popup menu of links above it (e.g. Admin > Users). The button is highlighted while one of its pages is open.
-    - `PsSidebarNav`'s `slots` prop renders an item itself (by href) when it depends on the user. It gets the item's label, href and icon; wrap it in `<Suspense>` with the plain link as the fallback. Example: `PsInvoicesNavItem`, which is disabled for founders.
+    - `PsSidebarNav`'s `slots` prop renders an item itself (by href) when it depends on the user. It gets the item's label, href and icon; wrap it in `<Suspense>` with the plain link as the fallback. Examples: `PsInvoicesNavItem`, which is disabled for founders, and `PsSeekerNavItem`, which is disabled for Callers, Developers and accounts without a role.
     - `PsSidebarLink`: one left-panel link, highlighted while its page is open. With `disabled`, it's greyed out and can't be clicked, and `disabledHint` is its tooltip.
     - `PsBrand`: the logo. `PsContainer`: a max-width wrapper.
     - `PsAnimatedBackground`: the moving work-themed background behind the auth pages, used in `src/app/(auth)/layout.tsx`.
@@ -49,6 +49,7 @@ before starting work, and add a new summary when the user asks to save the chat 
 - Register every collection in `COLLECTIONS` in `src/lib/db/config.ts`. Its type rejects names without `ps_`. Add its indexes to `INDEXES` there too; they're created automatically on first connection.
 - Access collections only through `getCollection<T>("<key>")` from `src/lib/db/client.ts`. Never use a raw string name.
 - Files (images, attachments) go in GridFS buckets registered in `BUCKETS` (also `ps_`-prefixed, e.g. `ps_avatars`, stored as `ps_avatars.files` / `ps_avatars.chunks`). Access them with `getBucket("<key>")`. Validate uploads on the server by their real bytes, never by file name or claimed type.
+- **The exception:** job seekers' work results (`.html` pages) are saved on disk in `upload/` at the project root, as the user asked. Build paths only with `uploadPath()` (`src/lib/storage/upload.ts`) from server-generated names, never from the uploaded file name. The folder's contents are git-ignored (only `upload/.gitkeep` is committed), and a deployment must keep `upload/` on persistent storage.
 
 ## 3. Scalable structure
 
@@ -67,6 +68,7 @@ src/
     components/         ps-* feature components
   lib/db/               config.ts (names/indexes) and client.ts (connection)
   lib/utils/            pure helpers (cn, form state helpers)
+  lib/storage/          upload.ts: paths inside upload/ (files saved on disk)
 ```
 
 - Features are grouped by area into categories under `src/features/`:
@@ -78,6 +80,7 @@ src/
   | `organization/` | `groups`, `admin` (the super-admin panel) |
   | `communication/` | `chat` (direct messages), `notifications` (founders' announcements, topbar bell) |
 | `finance/` | `invoices` (members ask the founders for a payment) |
+| `work/` | `seeker` (job seekers upload their work results: bid counts) |
   | `shared/` | app-wide UI services used everywhere: `confirm` (confirm popup), `snackbar` |
 
 - A new feature (follows, chat, tasks, …) gets its own folder in the category it belongs to (e.g. `src/features/scheduling/tasks/`), using the same file layout. Add a new category only for a new area that fits none of these, and list it in the table.
@@ -252,6 +255,31 @@ src/
 - Invoices are kept when an account is deleted, as payment records.
 - Times are shown in the calendar's chosen zone, else the device's (`PsInvoiceTime`). The server renders them in UTC.
 
+### Seeker (`src/features/work/seeker/`)
+
+- **Job seekers (role 4) record their bids** at `/seeker` (`SEEKER_PATH`, "Seeker" in the left panel). A **work result** is a set of `.html` files (saved job pages) uploaded together. **Each file is one bid**, so its bid count is its number of files.
+- **Who gets what** comes from `seekerAccess(role)` (`access.ts`):
+
+  | `mode` | Who | Gets |
+|---|---|---|
+  | `"upload"` | Job seeker (role 4) | Their totals, the upload form and the list of their bid counts |
+  | `"group"` | Profile Manager (role 1) | The bids of the job seekers **now in their group** (`groupId`; a PM without a group is told so): each seeker's bids, uploads and last upload, the group totals, and all their work results with who uploaded each. No upload form |
+  | `"soon"` | Founder (0) | "Coming soon" for now |
+  | `"none"` | Caller (2), Developer (3), no role | The left-panel tab is disabled (`PsSeekerNavItem`); the page by URL says it's for job seekers |
+
+- **Uploading:** `PsWorkResultForm` (pick or drop files; it shows "N bids" and each file with a remove button) sends them to `POST /api/work-results` as multipart (`files`).
+  - It's a route handler, not a server action, because server actions take at most 1 MB. The browser then calls `router.refresh()` and shows a snackbar.
+  - The server checks every file again by its bytes (`checkHtmlFile` in `validation.ts`): a `.html` name, not empty, at most `WORK_FILE_MAX_BYTES`, no NUL bytes, starts with a tag, and has `<html` or `<!doctype html` in its first 64 KB.
+  - Limits: at most `WORK_FILES_MAX` files and `WORK_UPLOAD_MAX_BYTES` per upload.
+  - The same page (by SHA-256) can't be uploaded twice, neither in one upload nor again later.
+  - **All or nothing:** if any file is refused, nothing is saved and every problem is listed under the form.
+- **Storage:** the files go to `upload/work-results/<userId>/<resultId>/<uuid>.html`. The original names are only stored for display. `ps_work_results` (`WorkResultDoc`) holds `userId`, `bidCount`, `files` (name, storedName, size, sha256) and `createdAt`. If storing the document fails, the files are removed again.
+- **The list** ("Bid counts") shows each work result's time and bid count, newest first, 10 per page (`WORK_RESULT_PAGE_SIZE`, `PsPagination`). It has Total bids and Work results totals (`PsStat`). A row opens a `PsModal` (`?result=<id>`) listing its files (`PsWorkResultFiles`). `findWorkResult(id, viewer)` and `readWorkFile` only allow the job seeker's own (`{ userId }`) or, for a Profile Manager, those of a job seeker now in their group (`{ groupId }`). Anyone else gets a 404.
+- **Viewing a file:** each file in the dialog links to `GET /api/work-results/<id>/files/<n>` (`workFileUrl`), which opens in a new tab and shows the page itself, not a download (`Content-Disposition: inline`).
+  - The pages are untrusted HTML, so the response has `Content-Security-Policy: sandbox; default-src 'none'; …`: no scripts, forms or popups, an opaque origin (no access to the site's cookies), and only styles, images, fonts and media over https/data load. Keep that header on any route that serves uploaded HTML.
+- `WorkResult` carries no user ids or disk paths. `WorkResult.seeker` (name, display name, photo) is only filled in on the group view.
+- Deleting an account (Admin) also deletes its work results and their folder (`deleteWorkResultsOf`).
+
 ## 4. Authentication
 
 - Custom email + password auth. Users live in `ps_users`; sessions live in `ps_sessions`, stored as SHA-256 hashes of the random token in the `ps_session` cookie.
@@ -264,7 +292,7 @@ src/
 
 ### Roles and account activation
 
-- `UserDoc.role` is a number from `ROLES` in `src/features/account/users/roles.ts`, starting at 0. **0 is the founder (super-admin), 1 is Profile Manager (makes and manages their group's schedules), 2 is Caller (sees their group's calendar, fills in the screen share link when required and "Note (Caller)"), 3 is Developer (sees their group's schedules that need a tech supporter, read-only).** See the Schedules section for exactly what each can do. New accounts get `role: null` ("No role") until one is given. To add a role, add it to `ROLES` with the next number and give it a label in `ROLE_LABELS`.
+- `UserDoc.role` is a number from `ROLES` in `src/features/account/users/roles.ts`, starting at 0. **0 is the founder (super-admin), 1 is Profile Manager (makes and manages their group's schedules), 2 is Caller (sees their group's calendar, fills in the screen share link when required and "Note (Caller)"), 3 is Developer (sees their group's schedules that need a tech supporter, read-only), 4 is Job seeker (uploads work results on the Seeker page; no calendar; their Profile Manager sees their bids).** See the Schedules section for exactly what each can do. New accounts get `role: null` ("No role") until one is given. To add a role, add it to `ROLES` with the next number and give it a label in `ROLE_LABELS`.
 - Check permissions with the helpers in `roles.ts` (`isSuperAdmin`, `isProfileManager`, `isCaller`, `isDeveloper`), `PublicUser.isSuperAdmin` or `calendarAccess()`, never by comparing raw numbers in pages.
 - New accounts start with `active: false`. Sign-up then creates no session and sends the user to `/signin`, and sign-in is refused (only after the password matched) until a super-admin activates the account. Documents without `active` count as inactive (`isActive()` in `features/account/users/queries.ts`).
 - `getCurrentUser()` returns null for inactive accounts, and deactivating an account deletes all its sessions, so access ends immediately.

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { CHAT_PATH } from "@/features/communication/chat/constants";
 import { INVOICES_PATH } from "@/features/finance/invoices/constants";
 import { CALENDAR_PATH } from "@/features/scheduling/calendar/constants";
+import { SEEKER_PATH } from "@/features/work/seeker/constants";
 import { PsBrand } from "./ps-brand";
 import { PsSidebarLink } from "./ps-sidebar-link";
 
@@ -17,8 +18,9 @@ export type NavItem = { label: string; href: string; icon: ReactNode };
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/", icon: icon(<path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z" />) },
   { label: "Schedule", href: CALENDAR_PATH, icon: icon(<><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4M8.5 14h.01M12 14h.01M15.5 14h.01M8.5 17h.01M12 17h.01" /></>) },
-  { label: "Chat", href: CHAT_PATH, icon: icon(<path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v6a2.5 2.5 0 0 1-2.5 2.5H11l-4 4v-4h0.5A2.5 2.5 0 0 1 5 12.5z" />) },
+  { label: "Seeker", href: SEEKER_PATH, icon: icon(<><circle cx="11" cy="11" r="6" /><path d="m20 20-4.35-4.35M9 9.5h4M9 12.5h3" /></>) },
   { label: "Invoices", href: INVOICES_PATH, icon: icon(<><path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><path d="M14 3v4h4M12 10v7M14 11.25c-.4-.5-1.1-.75-2-.75-1.1 0-2 .6-2 1.5s.9 1.25 2 1.5 2 .6 2 1.5-.9 1.5-2 1.5c-.9 0-1.6-.25-2-.75" /></>) },
+  { label: "Chat", href: CHAT_PATH, icon: icon(<path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v6a2.5 2.5 0 0 1-2.5 2.5H11l-4 4v-4h0.5A2.5 2.5 0 0 1 5 12.5z" />) },
 ];
 
 /**

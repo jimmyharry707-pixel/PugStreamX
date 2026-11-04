@@ -13,6 +13,8 @@ export const ROLES = {
   caller: 2,
   /** Sees their group's schedules that need a tech supporter, read-only. */
   developer: 3,
+  /** Applies for jobs and uploads their work results (saved job pages); each page is one bid. */
+  jobSeeker: 4,
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
@@ -22,6 +24,7 @@ const ROLE_LABELS: Record<Role, string> = {
   [ROLES.profileManager]: "Profile Manager",
   [ROLES.caller]: "Caller",
   [ROLES.developer]: "Developer",
+  [ROLES.jobSeeker]: "Job seeker",
 };
 
 export function roleLabel(role: number | null): string {
@@ -57,4 +60,9 @@ export function isCaller(role: number | null): boolean {
 /** Developers see their group's schedules that need a tech supporter, and change nothing. */
 export function isDeveloper(role: number | null): boolean {
   return role === ROLES.developer;
+}
+
+/** Job seekers upload their work results on the Seeker page. */
+export function isJobSeeker(role: number | null): boolean {
+  return role === ROLES.jobSeeker;
 }

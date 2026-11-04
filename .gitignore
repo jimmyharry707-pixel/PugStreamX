@@ -23,6 +23,10 @@
 # log
 /log
 
+# uploaded files (work results); the folder itself is kept
+/upload/*
+!/upload/.gitkeep
+
 # misc
 .DS_Store
 *.pem

@@ -7,6 +7,7 @@ import { requireSuperAdmin } from "@/features/account/auth/dal";
 import { deleteUserSessions } from "@/features/account/auth/session";
 import { deleteAvatar } from "@/features/account/profile/avatar";
 import { deleteConversationsOf } from "@/features/communication/chat/mutations";
+import { deleteWorkResultsOf } from "@/features/work/seeker/mutations";
 import { flashSnackbar } from "@/features/shared/snackbar/flash";
 import { deleteUser, updateUserActive, updateUserRole } from "@/features/account/users/mutations";
 import { roleLabel } from "@/features/account/users/roles";
@@ -60,7 +61,7 @@ export async function setUserRole(_prev: AdminActionResult, formData: FormData):
 }
 
 /**
- * Permanently deletes another account: the user, their sessions and their avatar. Founders
+ * Permanently deletes another account: the user, their sessions, their avatar, chats and work results. Founders
  * can't be deleted. On success, closes the profile dialog by going back to the list.
  */
 export async function removeUser(_prev: AdminActionResult, formData: FormData): Promise<AdminActionResult> {
@@ -81,6 +82,7 @@ export async function removeUser(_prev: AdminActionResult, formData: FormData): 
   await deleteUserSessions(id);
   if (result.user.profile?.avatarId) await deleteAvatar(result.user.profile.avatarId);
   await deleteConversationsOf(id);
+  await deleteWorkResultsOf(id);
 
   const name = result.user.profile?.displayName ?? result.user.email;
   await flashSnackbar({ type: "success", message: `${name}'s account has been deleted.` });

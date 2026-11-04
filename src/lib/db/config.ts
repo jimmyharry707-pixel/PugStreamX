@@ -14,6 +14,7 @@ export const COLLECTIONS = {
   messages: "ps_messages",
   invoices: "ps_invoices",
   notifications: "ps_notifications",
+  workResults: "ps_work_results",
 } as const satisfies Record<string, `ps_${string}`>;
 
 export type CollectionKey = keyof typeof COLLECTIONS;
@@ -88,5 +89,11 @@ export const INDEXES: Record<CollectionKey, IndexDescription[]> = {
     // Members: the published ones, newest first. Admin: all of them, newest first.
     { key: { published: 1, publishedAt: -1 } },
     { key: { createdAt: -1 } },
+  ],
+  workResults: [
+    // A job seeker's work results, newest first (and their totals).
+    { key: { userId: 1, createdAt: -1 } },
+    // Refusing a page they already uploaded.
+    { key: { userId: 1, "files.sha256": 1 } },
   ],
 };

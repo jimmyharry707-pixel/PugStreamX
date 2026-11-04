@@ -151,5 +151,15 @@
   { "category": "Time", "context": "10:00 PM" },
   { "category": "Time", "context": "10:30 PM" },
   { "category": "Time", "context": "11:00 PM" },
-  { "category": "Time", "context": "11:30 PM" }
+  { "category": "Time", "context": "11:30 PM" },
+
+  { "category": "Number", "context": "1" },
+  { "category": "Number", "context": "2" },
+  { "category": "Number", "context": "3" },
+  { "category": "Number", "context": "4" },
+  { "category": "Number", "context": "5" },
+  { "category": "Number", "context": "6" },
+  { "category": "Number", "context": "7" },
+  { "category": "Number", "context": "8" },
+  { "category": "Number", "context": "9" }
 ]
