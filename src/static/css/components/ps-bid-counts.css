@@ -1,0 +1,30 @@
+/* PsBidCounts: one bar per period, its width the period's share of the largest (--ps-bid-share, 0–1). */
+
+.ps-bid-counts[data-loading] ol {
+  opacity: 0.5;
+  transition: opacity 150ms;
+}
+
+.ps-bid-counts__track {
+  display: block;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--color-white) 5%, transparent);
+  overflow: hidden;
+}
+
+.ps-bid-counts__bar {
+  display: block;
+  height: 100%;
+  width: calc(var(--ps-bid-share, 0) * 100%);
+  border-radius: inherit;
+  background: var(--color-brand-400);
+  transition: width 300ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-bid-counts__bar,
+  .ps-bid-counts[data-loading] ol {
+    transition: none;
+  }
+}

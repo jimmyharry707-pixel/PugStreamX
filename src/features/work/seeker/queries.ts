@@ -7,6 +7,9 @@ import type { UserDoc } from "@/features/account/users/types";
 import { getCollection } from "@/lib/db/client";
 import { uploadPath } from "@/lib/storage/upload";
 import { paginate, type Page } from "@/lib/utils/pagination";
+import { zonedTime, zonedToUtc } from "@/lib/utils/time-zone";
+import { toDateKey } from "@/features/scheduling/calendar/dates";
+import type { PeriodRange } from "./periods";
 import { WORK_RESULT_PAGE_SIZE } from "./constants";
 import type { SeekerPerson, SeekerSummary, WorkFileDoc, WorkResult, WorkResultDoc, WorkTotals } from "./types";
 
@@ -42,11 +45,19 @@ export async function listWorkResults(userId: ObjectId, requestedPage: number): 
   return { items: docs.map((d) => toWorkResult(d)), page, totals };
 }
 
-/** The job seekers (role 4) now in a group, by id, as shown to their Profile Manager. */
-async function groupSeekers(groupId: ObjectId): Promise<Map<string, { id: ObjectId; person: SeekerPerson }>> {
+/**
+ * Which job seekers a view covers: `groupId` an ObjectId for one group, null for those without
+ * a group, or left out for every group (founders).
+ */
+export type SeekerScope = { groupId?: ObjectId | null };
+
+type Member = { id: ObjectId; person: SeekerPerson };
+
+/** The job seekers (role 4) now in the scope, by id, by name. `groupNames` adds their group's name. */
+async function seekersIn(scope: SeekerScope, groupNames?: Map<string, string>): Promise<Map<string, Member>> {
   const users = await getCollection<UserDoc>("users");
   const docs = await users
-    .find({ groupId, role: ROLES.jobSeeker }, { projection: { email: 1, profile: 1 } })
+    .find({ role: ROLES.jobSeeker, ...("groupId" in scope && { groupId: scope.groupId }) }, { projection: { email: 1, profile: 1, groupId: 1 } })
     .sort({ "profile.fullName": 1, _id: 1 })
     .toArray();
   return new Map(
@@ -58,6 +69,7 @@ async function groupSeekers(groupId: ObjectId): Promise<Map<string, { id: Object
           fullName: u.profile?.fullName ?? u.email,
           displayName: u.profile?.displayName ?? u.email,
           avatarUrl: u.profile ? avatarUrl(u.profile.avatarId.toHexString()) : null,
+          ...(groupNames && { groupName: (u.groupId && groupNames.get(u.groupId.toHexString())) ?? null }),
         },
       },
     ]),
@@ -65,31 +77,42 @@ async function groupSeekers(groupId: ObjectId): Promise<Map<string, { id: Object
 }
 
 /**
- * A Profile Manager's view of their group: each job seeker now in it with their totals, the
- * group's totals, and one page of all their work results, newest first (with who uploaded each).
- * Callers must check that the viewer is a Profile Manager of this group.
+ * The Profile Manager's and founder's view: every job seeker now in the scope with their totals,
+ * and one page of work results, newest first, with who uploaded each. `seeker` (a display name,
+ * ignoring case) narrows the totals and the list to one of them; `selected` is null when it
+ * isn't in the scope. Callers must check who may see the scope.
  */
-export async function listGroupWorkResults(
-  groupId: ObjectId,
+export async function listSeekerWorkResults(
+  scope: SeekerScope,
+  seeker: string | null,
   requestedPage: number,
-): Promise<{ seekers: SeekerSummary[]; totals: WorkTotals; items: WorkResult[]; page: Page }> {
-  const members = await groupSeekers(groupId);
-  const ids = [...members.values()].map((m) => m.id);
-  const byUser = ids.length > 0 ? await totalsBy(ids) : new Map();
+  groupNames?: Map<string, string>,
+): Promise<{ seekers: SeekerSummary[]; selected: SeekerSummary | null; totals: WorkTotals; items: WorkResult[]; page: Page }> {
+  const members = await seekersIn(scope, groupNames);
+  const byUser = members.size > 0 ? await totalsBy([...members.values()].map((m) => m.id)) : new Map();
   const seekers = [...members.entries()].map(([key, m]) => {
     const t = byUser.get(key);
     return { ...m.person, bids: t?.bids ?? 0, results: t?.results ?? 0, lastAt: t?.lastAt.toISOString() ?? null };
   });
-  const totals = { bids: seekers.reduce((n, s) => n + s.bids, 0), results: seekers.reduce((n, s) => n + s.results, 0) };
+  const wanted = seeker?.toLowerCase();
+  const selectedKey = wanted ? [...members.entries()].find(([, m]) => m.person.displayName.toLowerCase() === wanted)?.[0] : undefined;
+  const selected = selectedKey ? seekers[[...members.keys()].indexOf(selectedKey)] : null;
+  const shown = selected ? [selected] : seekers;
+  const ids = selectedKey ? [members.get(selectedKey)!.id] : [...members.values()].map((m) => m.id);
+
+  const totals = { bids: shown.reduce((n, s) => n + s.bids, 0), results: shown.reduce((n, s) => n + s.results, 0) };
   const page = paginate(requestedPage, totals.results, WORK_RESULT_PAGE_SIZE);
   const results = await getCollection<WorkResultDoc>("workResults");
   const docs =
     ids.length > 0 ? await results.find({ userId: { $in: ids } }).sort({ createdAt: -1, _id: -1 }).skip(page.skip).limit(page.pageSize).toArray() : [];
-  return { seekers, totals, items: docs.map((d) => toWorkResult(d, members.get(d.userId.toHexString())?.person)), page };
+  return { seekers, selected, totals, items: docs.map((d) => toWorkResult(d, members.get(d.userId.toHexString())?.person)), page };
 }
 
-/** Who may open a work result: its job seeker, or a Profile Manager of the group they're now in. */
-export type WorkResultViewer = { userId: ObjectId } | { groupId: ObjectId };
+/**
+ * Who may open a work result: its job seeker (`userId`), a Profile Manager for the job seekers
+ * now in their group (`groupId`), or a founder for anyone's (`all`).
+ */
+export type WorkResultViewer = { userId: ObjectId } | { groupId: ObjectId } | { all: true };
 
 async function findViewable(id: ObjectId, viewer: WorkResultViewer): Promise<{ doc: WorkResultDoc; seeker?: SeekerPerson } | null> {
   const results = await getCollection<WorkResultDoc>("workResults");
@@ -99,8 +122,15 @@ async function findViewable(id: ObjectId, viewer: WorkResultViewer): Promise<{ d
   }
   const doc = await results.findOne({ _id: id });
   if (!doc) return null;
-  const member = (await groupSeekers(viewer.groupId)).get(doc.userId.toHexString());
-  return member ? { doc, seeker: member.person } : null;
+  const users = await getCollection<UserDoc>("users");
+  const owner = await users.findOne({ _id: doc.userId, ...("groupId" in viewer && { role: ROLES.jobSeeker, groupId: viewer.groupId }) }, { projection: { email: 1, profile: 1 } });
+  if (!owner) return null;
+  const seeker = {
+    fullName: owner.profile?.fullName ?? owner.email,
+    displayName: owner.profile?.displayName ?? owner.email,
+    avatarUrl: owner.profile ? avatarUrl(owner.profile.avatarId.toHexString()) : null,
+  };
+  return { doc, seeker };
 }
 
 /** A work result the viewer may open, or null (another member's, or not in their group). */
@@ -129,4 +159,41 @@ export async function uploadedHashes(userId: ObjectId, hashes: string[]): Promis
   const docs = await results.find({ userId, "files.sha256": { $in: hashes } }, { projection: { "files.sha256": 1 } }).toArray();
   const wanted = new Set(hashes);
   return new Set(docs.flatMap((d) => d.files.map((f) => f.sha256)).filter((h) => wanted.has(h)));
+}
+
+/** The ids of the job seekers in the scope, or only `seeker`'s (a display name) when given and in it. */
+export async function seekerIdsIn(scope: SeekerScope, seeker: string | null): Promise<ObjectId[]> {
+  const members = [...(await seekersIn(scope)).values()];
+  const wanted = seeker?.toLowerCase();
+  const one = wanted ? members.find((m) => m.person.displayName.toLowerCase() === wanted) : undefined;
+  return one ? [one.id] : members.map((m) => m.id);
+}
+
+/**
+ * Bids and work results in each period (days in `timeZone`, see periods.ts) for these job
+ * seekers, plus whether any came before the first period.
+ */
+export async function countBidsByPeriod(
+  userIds: ObjectId[],
+  ranges: PeriodRange[],
+  timeZone: string,
+): Promise<{ counts: (WorkTotals & PeriodRange)[]; hasEarlier: boolean }> {
+  const counts = ranges.map((r) => ({ ...r, bids: 0, results: 0 }));
+  if (userIds.length === 0 || ranges.length === 0) return { counts, hasEarlier: false };
+  const from = zonedToUtc(ranges[0].start, "00:00", timeZone);
+  const to = zonedToUtc(ranges[ranges.length - 1].end, "00:00", timeZone);
+  const results = await getCollection<WorkResultDoc>("workResults");
+  const [docs, earlier] = await Promise.all([
+    results.find({ userId: { $in: userIds }, createdAt: { $gte: from, $lt: to } }, { projection: { createdAt: 1, bidCount: 1 } }).toArray(),
+    results.findOne({ userId: { $in: userIds }, createdAt: { $lt: from } }, { projection: { _id: 1 } }),
+  ]);
+  for (const doc of docs) {
+    const key = toDateKey(zonedTime(doc.createdAt, timeZone).day);
+    const bucket = counts.find((c) => c.start <= key && key < c.end);
+    if (bucket) {
+      bucket.bids += doc.bidCount;
+      bucket.results += 1;
+    }
+  }
+  return { counts, hasEarlier: !!earlier };
 }

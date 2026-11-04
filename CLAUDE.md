@@ -263,8 +263,8 @@ src/
   | `mode` | Who | Gets |
 |---|---|---|
   | `"upload"` | Job seeker (role 4) | Their totals, the upload form and the list of their bid counts |
-  | `"group"` | Profile Manager (role 1) | The bids of the job seekers **now in their group** (`groupId`; a PM without a group is told so): each seeker's bids, uploads and last upload, the group totals, and all their work results with who uploaded each. No upload form |
-  | `"soon"` | Founder (0) | "Coming soon" for now |
+  | `"group"` | Profile Manager (role 1) | The bids of the job seekers **now in their group** (`groupId`; a PM without a group is told so): each seeker's bids, uploads and last upload, the group totals, and all their work results with who uploaded each. No upload form. Founders and Profile Managers can pick one job seeker |
+  | `"all"` | Founder (0) | The same view for **every** job seeker, with a Group picker (All groups, each group, No group: `?group=<id>` / `?group=none`) and their group shown |
   | `"none"` | Caller (2), Developer (3), no role | The left-panel tab is disabled (`PsSeekerNavItem`); the page by URL says it's for job seekers |
 
 - **Uploading:** `PsWorkResultForm` (pick or drop files; it shows "N bids" and each file with a remove button) sends them to `POST /api/work-results` as multipart (`files`).
@@ -274,7 +274,13 @@ src/
   - The same page (by SHA-256) can't be uploaded twice, neither in one upload nor again later.
   - **All or nothing:** if any file is refused, nothing is saved and every problem is listed under the form.
 - **Storage:** the files go to `upload/work-results/<userId>/<resultId>/<uuid>.html`. The original names are only stored for display. `ps_work_results` (`WorkResultDoc`) holds `userId`, `bidCount`, `files` (name, storedName, size, sha256) and `createdAt`. If storing the document fails, the files are removed again.
-- **The list** ("Bid counts") shows each work result's time and bid count, newest first, 10 per page (`WORK_RESULT_PAGE_SIZE`, `PsPagination`). It has Total bids and Work results totals (`PsStat`). A row opens a `PsModal` (`?result=<id>`) listing its files (`PsWorkResultFiles`). `findWorkResult(id, viewer)` and `readWorkFile` only allow the job seeker's own (`{ userId }`) or, for a Profile Manager, those of a job seeker now in their group (`{ groupId }`). Anyone else gets a 404.
+- **The list** ("Bid counts") shows each work result's time and bid count, newest first, 10 per page (`WORK_RESULT_PAGE_SIZE`, `PsPagination`). It has Total bids and Work results totals (`PsStat`). A row opens a `PsModal` (`?result=<id>`) listing its files (`PsWorkResultFiles`). `findWorkResult(id, viewer)` and `readWorkFile` only allow the job seeker's own (`{ userId }`) or, for a Profile Manager, those of a job seeker now in their group (`{ groupId }`), or anyone's for a founder (`{ all: true }`). Anyone else gets a 404.
+- **Picking:** `PsSeekerFilters` (`PsSelect`s that navigate) and clicking a row in the Job seekers table (`PsSeekerSummaryTable`) set `?seeker=<display name>` (not an id), which narrows the totals and the bid list (`listSeekerWorkResults(scope, seeker, page)`). Changing the group clears it. An unknown group or job seeker falls back to all. The picks stay in the URL through paging and the work result dialog (`seekerHref({ group, seeker, page, result })`). Only founders' `group` is honoured.
+- **Bid counts (Daily / Weekly / Monthly):** founders, Profile Managers and job seekers see `PsBidCounts` above the work results list: bids per day (14 shown), week (12, starting Monday) or month (12), newest first, with bars and the range total. ‹ Earlier / Later › move a screen at a time.
+  - The view they pick is remembered in this browser (`ps_bid_period` in localStorage).
+  - Periods are days in the calendar's time zone (else the device's), which only the browser knows, so it loads from `GET /api/work-results/counts?period&zone&offset[&group][&seeker]`. The route re-checks access and counts the same job seekers the page shows.
+  - The page and that route both resolve who's covered with `resolveSeekerView(user, { group, seeker })` (`view.ts`). Period maths is in `periods.ts` (`periodRanges`, `periodLabel`), counting in `countBidsByPeriod` (`queries.ts`).
+  - The list of uploads is headed "Work results".
 - **Viewing a file:** each file in the dialog links to `GET /api/work-results/<id>/files/<n>` (`workFileUrl`), which opens in a new tab and shows the page itself, not a download (`Content-Disposition: inline`).
   - The pages are untrusted HTML, so the response has `Content-Security-Policy: sandbox; default-src 'none'; …`: no scripts, forms or popups, an opaque origin (no access to the site's cookies), and only styles, images, fonts and media over https/data load. Keep that header on any route that serves uploaded HTML.
 - `WorkResult` carries no user ids or disk paths. `WorkResult.seeker` (name, display name, photo) is only filled in on the group view.

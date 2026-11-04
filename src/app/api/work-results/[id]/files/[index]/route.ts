@@ -19,7 +19,7 @@ const SANDBOX_CSP = [
 ].join("; ");
 
 // GET /api/work-results/:id/files/:index: one uploaded page, shown in the browser (not
-// downloaded). For the job seeker who uploaded it and the Profile Managers of their group.
+// downloaded). For the job seeker who uploaded it, the Profile Managers of their group and founders.
 export async function GET(_request: Request, { params }: RouteContext<"/api/work-results/[id]/files/[index]">) {
   const user = await getCurrentUser();
   if (!user?.profileComplete) return new Response("Unauthorized", { status: 401 });
@@ -31,6 +31,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/api/work
   let viewer: WorkResultViewer | null = null;
   if (access.mode === "upload") viewer = { userId: new ObjectId(user.id) };
   else if (access.mode === "group" && access.groupId) viewer = { groupId: new ObjectId(access.groupId) };
+  else if (access.mode === "all") viewer = { all: true };
   if (!viewer) return new Response("Not found", { status: 404 });
 
   const found = await readWorkFile(new ObjectId(id), Number(index), viewer);

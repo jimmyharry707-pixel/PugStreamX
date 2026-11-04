@@ -30,9 +30,19 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-/** The list URL with `?page` and `?result` when given. */
-export function seekerHref({ page, result }: { page?: number; result?: string } = {}): string {
+/** `?group=<id>` (founders only) picks a group; `none` is job seekers without a group. */
+export const GROUP_FILTER_PARAM = "group";
+export const NO_GROUP = "none";
+/** `?seeker=<display name>` picks one job seeker (founders and Profile Managers). */
+export const SEEKER_PARAM = "seeker";
+
+export type SeekerFilters = { group?: string | null; seeker?: string | null };
+
+/** The Seeker page URL with its filters, `?page` and `?result` when given. */
+export function seekerHref({ group, seeker, page, result }: SeekerFilters & { page?: number; result?: string } = {}): string {
   const params = new URLSearchParams();
+  if (group) params.set(GROUP_FILTER_PARAM, group);
+  if (seeker) params.set(SEEKER_PARAM, seeker);
   if (page && page > 1) params.set("page", String(page));
   if (result) params.set(RESULT_PARAM, result);
   const query = params.toString();

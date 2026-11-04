@@ -6,7 +6,7 @@ import { PsWorkResultTime } from "./ps-work-result-time";
 
 /**
  * Work results, newest first: when, and the bid count. A row opens its files (`detailsHref`).
- * `showSeeker` adds who uploaded it (the Profile Manager's group view).
+ * `showSeeker` adds who uploaded it (and their group on the founder's view).
  */
 export function PsWorkResultTable({ results, detailsHref, showSeeker = false }: { results: WorkResult[]; detailsHref: (id: string) => string; showSeeker?: boolean }) {
   return (
@@ -32,7 +32,10 @@ export function PsWorkResultTable({ results, detailsHref, showSeeker = false }: 
                 <PsTableCell stack="full">
                   <div className="flex min-w-0 items-center gap-3">
                     <PsAvatar name={result.seeker?.fullName ?? "?"} src={result.seeker?.avatarUrl ?? undefined} />
-                    <p className="truncate font-medium text-gray-100">{result.seeker?.fullName ?? "Former member"}</p>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-gray-100">{result.seeker?.fullName ?? "Former member"}</p>
+                      {result.seeker?.groupName !== undefined && <p className="truncate text-xs text-gray-400">{result.seeker.groupName ?? "No group"}</p>}
+                    </div>
                   </div>
                 </PsTableCell>
               )}
