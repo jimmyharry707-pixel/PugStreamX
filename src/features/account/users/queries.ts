@@ -1,7 +1,9 @@
 import "server-only";
-import { ObjectId } from "mongodb";
+import { ObjectId, type Filter } from "mongodb";
 import { avatarUrl } from "@/features/account/profile/constants";
+import type { UserStatusFilter } from "@/features/organization/admin/constants";
 import { getCollection } from "@/lib/db/client";
+import { PAGE_SIZE, paginate, type Page } from "@/lib/utils/pagination";
 import { isSuperAdmin } from "./roles";
 import type { PublicUser, UserDetails, UserDoc, UserListItem } from "./types";
 
@@ -17,11 +19,29 @@ export async function findUserById(id: ObjectId): Promise<UserDoc | null> {
   return users.findOne({ _id: id });
 }
 
-/** Every account, newest first, for the Admin page. Callers must check requireSuperAdmin(). */
-export async function listUsers(): Promise<UserListItem[]> {
+/**
+ * One page of accounts for Admin › Users, with the count for each filter. Inactive accounts
+ * (waiting for activation) come first, then newest first. Callers must check requireSuperAdmin().
+ */
+export async function listUsersPage(
+  status: UserStatusFilter,
+  requestedPage: number,
+  pageSize = PAGE_SIZE,
+): Promise<{ items: UserListItem[]; page: Page; counts: Record<UserStatusFilter, number> }> {
   const users = await getCollection<UserDoc>("users");
-  const docs = await users.find({}, { projection: { passwordHash: 0 } }).sort({ createdAt: -1 }).toArray();
-  return docs.map(toListItem);
+  // Documents without `active` count as inactive (isActive()).
+  const filter: Filter<UserDoc> = status === "active" ? { active: true } : status === "inactive" ? { active: { $ne: true } } : {};
+  const [all, active] = await Promise.all([users.countDocuments({}), users.countDocuments({ active: true })]);
+  const counts = { all, active, inactive: all - active };
+  const page = paginate(requestedPage, counts[status], pageSize);
+  // Ascending `active` puts missing and false (inactive) before true.
+  const docs = await users
+    .find(filter, { projection: { passwordHash: 0 } })
+    .sort({ active: 1, createdAt: -1, _id: -1 })
+    .skip(page.skip)
+    .limit(page.pageSize)
+    .toArray();
+  return { items: docs.map(toListItem), page, counts };
 }
 
 /** One account with its full profile, for the Admin pages. Callers must check requireSuperAdmin(). */

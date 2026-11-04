@@ -12,6 +12,8 @@ export const COLLECTIONS = {
   groups: "ps_groups",
   conversations: "ps_conversations",
   messages: "ps_messages",
+  invoices: "ps_invoices",
+  notifications: "ps_notifications",
 } as const satisfies Record<string, `ps_${string}`>;
 
 export type CollectionKey = keyof typeof COLLECTIONS;
@@ -40,6 +42,8 @@ export const INDEXES: Record<CollectionKey, IndexDescription[]> = {
     { key: { role: 1 } },
     // The Admin page lists accounts newest first.
     { key: { createdAt: -1 } },
+    // Admin › Users pages: inactive accounts first, then newest first.
+    { key: { active: 1, createdAt: -1 } },
     // A group's members (calendar sharing, member counts).
     { key: { groupId: 1 } },
   ],
@@ -72,5 +76,17 @@ export const INDEXES: Record<CollectionKey, IndexDescription[]> = {
   messages: [
     // A conversation's messages in order (and counting unread ones).
     { key: { conversationId: 1, createdAt: -1 } },
+  ],
+  invoices: [
+    // A member's payment history, newest first.
+    { key: { userId: 1, createdAt: -1 } },
+    // Admin › Invoices: by status, newest first (and all of them).
+    { key: { status: 1, createdAt: -1 } },
+    { key: { createdAt: -1 } },
+  ],
+  notifications: [
+    // Members: the published ones, newest first. Admin: all of them, newest first.
+    { key: { published: 1, publishedAt: -1 } },
+    { key: { createdAt: -1 } },
   ],
 };

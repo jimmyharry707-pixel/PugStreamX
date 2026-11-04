@@ -12,7 +12,13 @@ before starting work, and add a new summary when the user asks to save the chat 
 - Every React component file is named `ps-<name>.tsx` in kebab-case, e.g. `ps-button.tsx`, `ps-sign-in-form.tsx`.
 - Each exports a named component `Ps<Name>` in PascalCase, e.g. `PsButton`, `PsSignInForm`. No default exports.
 - Where components live:
-  - `src/components/ui/`: basic reusable building blocks (`PsButton`, `PsIconButton`, `PsInput`, `PsPasswordInput`, `PsTextarea`, `PsPhoneInput`, `PsField`, `PsFormField`, `PsAlert`, `PsBadge`, `PsAvatar`, `PsChip`, `PsSection`, `PsEmptyState`, `PsSelect`, `PsSwitch`, `PsDialog`, `PsModal`, `PsTable`). They have no data fetching and no feature knowledge.
+  - `src/components/ui/`: basic reusable building blocks (`PsButton`, `PsIconButton`, `PsInput`, `PsPasswordInput`, `PsTextarea`, `PsPhoneInput`, `PsField`, `PsFormField`, `PsAlert`, `PsBadge`, `PsAvatar`, `PsChip`, `PsSection`, `PsEmptyState`, `PsSelect`, `PsSwitch`, `PsDialog`, `PsModal`, `PsTable`, `PsPagination`, `PsCopyButton`, `PsStat`). They have no data fetching and no feature knowledge.
+  - **Every paginated list uses `PsPagination`** (`ps-pagination.tsx`) and the helpers in `src/lib/utils/pagination.ts`, never its own page links:
+    - The page is in the URL as `?page=N` (1-based; page 1 leaves it out). Read it with `parsePage(params.page)`. Then `paginate(page, total, pageSize)` gives the clamped `page`, the `pageCount` and the query's `skip`. A page past the end shows the last one.
+    - Render `<PsPagination {...page} href="<list URL without page>" label="… pages" />`. Other search params in `href` (filters) are kept.
+    - It shows "Showing 11–20 of 45" and ‹ 1 … 4 5 6 … 9 › (at most 7 numbers). It renders nothing for an empty list.
+    - Links that open a row (e.g. `?invoice=<id>`) keep the current `page`, so closing the dialog returns to it.
+  - `PsCopyButton` copies a value ("Copy", then "Copied"). `PsStat` is a summary tile: a label, a big value and a line under it.
   - **Every table uses `PsTable`** (`ps-table.tsx`) and its parts (`PsTableHead`, `PsTableBody`, `PsTableRow`, `PsTableHeaderCell`, `PsTableCell`, `PsTableRowLink`), never a raw `<table>`.
     - `hideBelow="md"` hides a column on smaller screens; give its header cell the same value.
     - `grow` makes the main column take the leftover width and truncate long text.
@@ -27,7 +33,8 @@ before starting work, and add a new summary when the user asks to save the chat 
     - `PsAppShell`: the main-site frame (left panel, topbar, main container; the panel becomes a drawer below the `lg` breakpoint).
     - `PsSidebarNav`: left-panel navigation. Its items live in `NAV_ITEMS`; add an item only once its page exists (no placeholder buttons). Role-dependent links go in its `adminItem` slot (shown at the bottom, inside `<Suspense>`), e.g. `PsAdminNavItem`. Its `badges` prop puts a client component at the right of an item, by href (e.g. `PsChatUnreadBadge` on Chat), so the nav itself stays feature-free.
     - `PsSidebarMenu`: a left-panel button that opens a popup menu of links above it (e.g. Admin > Users). The button is highlighted while one of its pages is open.
-    - `PsSidebarLink`: one left-panel link, highlighted while its page is open.
+    - `PsSidebarNav`'s `slots` prop renders an item itself (by href) when it depends on the user. It gets the item's label, href and icon; wrap it in `<Suspense>` with the plain link as the fallback. Example: `PsInvoicesNavItem`, which is disabled for founders.
+    - `PsSidebarLink`: one left-panel link, highlighted while its page is open. With `disabled`, it's greyed out and can't be clicked, and `disabledHint` is its tooltip.
     - `PsBrand`: the logo. `PsContainer`: a max-width wrapper.
     - `PsAnimatedBackground`: the moving work-themed background behind the auth pages, used in `src/app/(auth)/layout.tsx`.
   - Layering (z-index): confirm popup `z-[130]` > dialogs and the mobile drawer `z-[120]` > topbar and its menus `z-[110]` > snackbars `z-[100]` > page content. Anything the user opens must sit above snackbars.
@@ -69,7 +76,8 @@ src/
   | `account/` | `auth` (sign-in, sessions), `profile` (required profile, avatar), `users` (user documents, roles) |
   | `scheduling/` | `calendar` (the week grid, dates, time zones), `schedules` (the events on it) |
   | `organization/` | `groups`, `admin` (the super-admin panel) |
-  | `communication/` | `chat` (direct messages) |
+  | `communication/` | `chat` (direct messages), `notifications` (founders' announcements, topbar bell) |
+| `finance/` | `invoices` (members ask the founders for a payment) |
   | `shared/` | app-wide UI services used everywhere: `confirm` (confirm popup), `snackbar` |
 
 - A new feature (follows, chat, tasks, …) gets its own folder in the category it belongs to (e.g. `src/features/scheduling/tasks/`), using the same file layout. Add a new category only for a new area that fits none of these, and list it in the table.
@@ -193,6 +201,57 @@ src/
 - **Read state:** opening a conversation marks it read, and so do new messages arriving while it's open in a visible tab. The left panel's Chat item shows the total unread (`PsChatUnreadBadge`, "99+" above `UNREAD_MAX`).
 - **UI:** `PsChat` (page) = `PsChatList` + `PsChatThread` (with `PsChatComposer`), plus `PsChatMemberPicker` (New message, with search). A message shows at once greyed out ("Sending…") until the server confirms it; if sending fails, the text goes back into the box. Links in messages become clickable (`splitLinks`, http(s) only, new tab, `noopener noreferrer`); message text is never rendered as HTML.
 
+### Notifications (`src/features/communication/notifications/`)
+
+- **Announcements from the founders to every member**, stored in `ps_notifications` (`title`, `message` as plain text, `published`, `publishedAt`).
+- **Writing them:** founders use `/admin/notifications` (`ADMIN_NOTIFICATIONS_PATH`, in the Admin menu). It's built from `PsNotificationManager` and `PsNotificationForm`, and paginated with `PsPagination`.
+  - New and Edit open a `PsDialog` with Title, Message and a Published switch (on by default). Delete asks first.
+  - Drafts (Published off) never reach members.
+  - `publishedAt` is set the first time a notification is published, and later edits keep it. It's the time members see, and it decides what counts as new.
+- **Topbar bell:** `PsNotificationBell` is a server component inside `<Suspense>` in the main layout. It only shows for members with a complete profile, and it renders the client `PsNotificationCenter`.
+  - It lists the published notifications, newest first (at most `NOTIFICATIONS_SHOWN`). Message links become clickable (`splitLinks`); the text is never rendered as HTML.
+  - It shows a red dot when one was published after the member last opened the list (`READ_AT_KEY` in localStorage). New ones get a "New" badge.
+- **The popup on arrival:** the same popup opens by itself when a member arrives on the site:
+  - Once per tab session (`SHOWN_KEY` in sessionStorage), and only if anything is published.
+  - **"Don't show for a day"** is a checkbox at the bottom of the popup. If it's ticked when the popup closes, the popup stops opening by itself for 24 hours (`SKIP_UNTIL_KEY` in localStorage, `SKIP_MS`). The bell still opens it.
+  - These settings are per browser, not per account.
+  - The popup is rendered with `createPortal` into `<body>`. The topbar's `backdrop-blur` traps `position: fixed` children, so any popup opened from inside the topbar needs a portal.
+- **Cache:** the published list is the same for everyone, so it's cached (`"use cache"`, `cacheTag(NOTIFICATIONS_TAG)`, `cacheLife("hours")`).
+  - `saveNotification` and `removeNotification` call `updateTag(NOTIFICATIONS_TAG)`, so members see changes at once.
+  - Database edits made outside these actions show up only when the cache expires (within hours) or the server restarts.
+
+### Invoices (`src/features/finance/invoices/`)
+
+- **Members ask the founders for a payment** at `/invoices` (`INVOICES_PATH`, in the left panel). Invoices are stored in `ps_invoices` (`InvoiceDoc`).
+- **The request** (`PsInvoiceForm`, `requestPayment`, `invoiceSchema`) has these fields:
+  - **Method** (`PAYMENT_METHODS`, labels in `PAYMENT_METHOD_INFO`): `bep20` (crypto), `paypal`, `zelle` or `venmo`, shown as radio tiles.
+  - **Address:** its label and checks depend on the method (`checkAddress` in `validation.ts`):
+    - BEP20: a wallet, `0x` and 40 hex digits.
+    - PayPal: an email.
+    - Zelle: an email or a phone number.
+    - Venmo: a username, stored with `@`.
+
+    The field starts with the address the member last used for that method (`lastAddresses`).
+  - **Amount** in US dollars ("1,234.50" is fine). It's stored as whole cents (`amountCents`) and must be more than 0 and at most `AMOUNT_MAX`. Show it with `formatAmount()`.
+  - **Note**: required.
+  - Founders don't send invoices. `/invoices` points them to the admin page, and `requestPayment` refuses them.
+- **Status** (`INVOICE_STATUSES`): `pending`, then `accepted` or `rejected`. `PsInvoiceStatusBadge` shows them as warning, success and danger.
+- **Review** happens at `/admin/invoices` (`ADMIN_INVOICES_PATH`), which is in the Admin menu and for super-admins only:
+  - The page has filter chips with counts (Pending, Accepted, Rejected, All) and Pending and Accepted totals (`PsStat`). Pending is the default and is left out of the URL.
+  - Clicking a row opens a `PsModal` (`?invoice=<id>`) with:
+    - the details, with a Copy button on the address;
+    - `PsInvoiceReviewForm`: a note for the member (`reviewNote`; optional to accept, required to reject), then Accept or Reject after the confirm popup.
+
+    Once a review is saved, the dialog closes and a snackbar confirms it.
+  - **A decision is final.** `reviewInvoice` only updates invoices with `status: "pending"`, so two founders can't overwrite each other ("This invoice has already been reviewed.").
+  - It stores `reviewedBy` and `reviewedAt`. The details show "Accepted by" or "Rejected by" (the founder), when, and the "Founder's note".
+- **History:** `/invoices` lists the member's own invoices, newest first, 10 per page (`INVOICE_PAGE_SIZE`, `PsPagination`), with Pending and Accepted totals (no Rejected card). A row opens the same details, including the founder's answer.
+- **Privacy:**
+  - `findInvoice(id, ownerId)` only opens the member's own invoices.
+  - `Invoice` never carries user ids. The member and the reviewer are sent as a name and photo (`InvoicePerson`; null means "Former member").
+- Invoices are kept when an account is deleted, as payment records.
+- Times are shown in the calendar's chosen zone, else the device's (`PsInvoiceTime`). The server renders them in UTC.
+
 ## 4. Authentication
 
 - Custom email + password auth. Users live in `ps_users`; sessions live in `ps_sessions`, stored as SHA-256 hashes of the random token in the `ps_session` cookie.
@@ -211,7 +270,9 @@ src/
 - `getCurrentUser()` returns null for inactive accounts, and deactivating an account deletes all its sessions, so access ends immediately.
 - If no founder exists, `ensureFounder()` (run on sign-up and sign-in) makes the **oldest** account the founder and activates it. On a new database, the first sign-up becomes the founder.
 - Admin pages live under `/admin` (`src/features/organization/admin/`). Only super-admins see the left-panel **Admin** button, which opens a popup menu. Its links are `ADMIN_NAV_ITEMS` (`features/organization/admin/constants.ts`), so add new admin pages there. `/admin` itself redirects to the first one.
-- `/admin/users` lists every account with Activate / Deactivate buttons. Clicking a row opens the full profile in a `PsModal` (`?user=<id>`), where the role and group can be changed and the account deleted (after the confirm popup). Deleting removes the user, their sessions and avatar file. Founders can't be deleted (change their role first). Super-admins can't change their own role, deactivate or delete themselves, so one always remains.
+- `/admin/users` lists every account with Activate / Deactivate buttons.
+  - The list is paginated, 10 per page (`listUsersPage` + `PsPagination`). The query sorts inactive accounts first, then newest first, and the filter chips count every account. The page and the `?status=` filter stay in the URL when a profile is opened and closed.
+  - Clicking a row opens the full profile in a `PsModal` (`?user=<id>`), where the role and group can be changed and the account deleted (after the confirm popup). Deleting removes the user, their sessions and avatar file. Founders can't be deleted (change their role first). Super-admins can't change their own role, deactivate or delete themselves, so one always remains.
 - Admin pages, actions and route handlers must call `requireSuperAdmin()` (`features/account/auth/dal.ts`), which returns a 404 for everyone else. Super-admin accounts can't be deactivated from there.
 
 ### Required profile (`src/features/account/profile/`)

@@ -5,6 +5,7 @@ import { PsAlert } from "@/components/ui/ps-alert";
 import { PsAvatar } from "@/components/ui/ps-avatar";
 import { PsBadge } from "@/components/ui/ps-badge";
 import { PsButton } from "@/components/ui/ps-button";
+import { PsCopyButton } from "@/components/ui/ps-copy-button";
 import { timeZoneLabel } from "@/features/scheduling/calendar/time-zone";
 import { confirm } from "@/features/shared/confirm/store";
 import { removeSchedule } from "../actions";
@@ -46,22 +47,10 @@ function Link({ url }: { url: string | null }) {
 
 /** The schedule's ID with a Copy button (to paste as another schedule's "Linked schedule"). */
 function ScheduleId({ uid }: { uid: string }) {
-  const [copied, setCopied] = useState<"yes" | "failed" | null>(null);
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(uid);
-      setCopied("yes");
-    } catch {
-      setCopied("failed");
-    }
-    setTimeout(() => setCopied(null), 2000);
-  }
   return (
     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <code className="select-all font-mono text-sm tracking-wide text-gray-100">{uid}</code>
-      <button type="button" onClick={copy} className="rounded-md px-1.5 py-0.5 text-xs text-brand-300 hover:bg-white/5">
-        {copied === "yes" ? "Copied" : copied === "failed" ? "Select and copy it" : "Copy"}
-      </button>
+      <PsCopyButton text={uid} />
     </span>
   );
 }

@@ -2,21 +2,24 @@ import { ObjectId } from "mongodb";
 import type { Metadata } from "next";
 import { PsChip } from "@/components/ui/ps-chip";
 import { PsModal } from "@/components/ui/ps-modal";
+import { PsPagination } from "@/components/ui/ps-pagination";
 import { PsUserProfile } from "@/features/organization/admin/components/ps-user-profile";
 import { PsUserTable } from "@/features/organization/admin/components/ps-user-table";
 import { ADMIN_USERS_PATH, USER_PARAM, USER_STATUS_FILTERS, type UserStatusFilter } from "@/features/organization/admin/constants";
 import { requireSuperAdmin } from "@/features/account/auth/dal";
 import { listGroups } from "@/features/organization/groups/queries";
-import { getUserDetails, listUsers } from "@/features/account/users/queries";
+import { getUserDetails, listUsersPage } from "@/features/account/users/queries";
+import { parsePage } from "@/lib/utils/pagination";
 
 export const metadata: Metadata = { title: "Users · Admin" };
 
 const FILTER_LABELS: Record<UserStatusFilter, string> = { all: "All", inactive: "Inactive", active: "Active" };
 
-/** Users page URL, keeping the status filter and optionally opening one user's profile. */
-function usersHref(filter: UserStatusFilter, userId?: string) {
+/** Users page URL, keeping the status filter (and page), and optionally opening one user's profile. */
+function usersHref(filter: UserStatusFilter, { page, userId }: { page?: number; userId?: string } = {}) {
   const params = new URLSearchParams();
   if (filter !== "all") params.set("status", filter);
+  if (page && page > 1) params.set("page", String(page));
   if (userId) params.set(USER_PARAM, userId);
   const query = params.toString();
   return query ? `${ADMIN_USERS_PATH}?${query}` : ADMIN_USERS_PATH;
@@ -28,21 +31,14 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
   const filter = USER_STATUS_FILTERS.find((f) => f === params.status) ?? "all";
   const selectedId = typeof params[USER_PARAM] === "string" && ObjectId.isValid(params[USER_PARAM]) ? params[USER_PARAM] : null;
 
-  const [users, selected, groups] = await Promise.all([
-    listUsers(),
+  const [{ items: shown, page, counts }, selected, groups] = await Promise.all([
+    listUsersPage(filter, parsePage(params.page)),
     selectedId ? getUserDetails(new ObjectId(selectedId)) : null,
     listGroups(),
   ]);
   const groupNames = Object.fromEntries(groups.map((g) => [g.id, g.name]));
-  const counts: Record<UserStatusFilter, number> = {
-    all: users.length,
-    inactive: users.filter((u) => !u.active).length,
-    active: users.filter((u) => u.active).length,
-  };
   // Inactive accounts (waiting for activation) come first.
-  const shown = users
-    .filter((u) => filter === "all" || u.active === (filter === "active"))
-    .sort((a, b) => Number(a.active) - Number(b.active));
+  const listHref = usersHref(filter, { page: page.page });
 
   return (
     <div className="mx-auto w-full max-w-5xl p-4 sm:p-6 lg:p-8">
@@ -60,9 +56,12 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
         ))}
       </nav>
 
-      <div className="mt-4">
+      <div className="mt-4 space-y-4">
         {shown.length > 0 ? (
-          <PsUserTable users={shown} currentUserId={admin.id} profileHref={(id) => usersHref(filter, id)} groupNames={groupNames} />
+          <>
+            <PsUserTable users={shown} currentUserId={admin.id} profileHref={(id) => usersHref(filter, { page: page.page, userId: id })} groupNames={groupNames} />
+            <PsPagination {...page} href={usersHref(filter)} label="User pages" />
+          </>
         ) : (
           <p className="rounded-2xl border border-dashed border-white/10 px-4 py-12 text-center text-sm text-gray-400">
             {filter === "inactive" ? "No accounts are waiting for activation." : "No accounts here yet."}
@@ -71,7 +70,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
       </div>
 
       {selected && (
-        <PsModal title="User profile" closeHref={usersHref(filter)}>
+        <PsModal title="User profile" closeHref={listHref}>
           <PsUserProfile user={selected} isSelf={selected.id === admin.id} groups={groups} />
         </PsModal>
       )}
