@@ -40,6 +40,8 @@ function toEvents(schedule: Schedule, timeZone: string): CalendarEvent[] {
     done: !!schedule.doneAt,
     techSupport: schedule.techSupportRequired,
     color: schedule.profileManager?.color,
+    // Only the Profile Manager who made it can drag it.
+    editable: schedule.mine,
   };
   if (isSameDay(start.day, end.day)) return [{ ...base, key: schedule.id, day: start.day, start: start.minutes, end: end.minutes }];
   return [
@@ -60,6 +62,7 @@ function toEvents(schedule: Schedule, timeZone: string): CalendarEvent[] {
  * What the viewer can do depends on `mode` (decided on the server, access.ts):
  * - "manage" (Profile Manager): Create (or click or drag in an empty spot) opens the form; click a
  *   schedule for its details, then Edit or Delete; drag a schedule (or its bottom edge) to move it.
+ *   Only their own schedules (`Schedule.mine`): other PMs' are read-only.
  * - "call" (Caller): see schedules; in the details, add the screen share link and a caller note.
  * - "support" (Developer): see only the schedules that need a tech supporter, read-only.
  * - "view" (super-admin): see any group's calendar, picked from `groups` (`?group=<id>`).

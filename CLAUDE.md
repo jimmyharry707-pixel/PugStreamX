@@ -99,7 +99,7 @@ src/
 
   | `mode` | Who | Can do |
   |---|---|---|
-  | `"manage"` | Profile Manager (role 1) in a group | Everything on their group's schedules (any PM's): create, edit, drag, delete |
+  | `"manage"` | Profile Manager (role 1) in a group | Create schedules in their group; edit, drag and delete **only their own** (other PMs' are read-only for them) |
   | `"call"` | Caller (role 2) in a group | See every field (read-only); fill in the caller fields with `saveCallerFields` |
   | `"support"` | Developer (role 3) in a group | See only the group's schedules with **Tech supporter needed**, read-only (every field; no forms) |
   | `"view"` | Super-admin | See any group's calendar read-only (`?group=<id>`, group picker in the toolbar) |
@@ -107,6 +107,7 @@ src/
 
   - Every action re-checks the mode, so hidden buttons are never the only guard.
   - The grid's `editable` prop turns off drag, click-to-create and resize for anyone who isn't a manager.
+  - **Only the PM who made a schedule can change it.** `Schedule.mine` (from `viewerId` in `ScheduleReadOptions`) says whether the viewer made it. Other PMs' blocks have `CalendarEvent.editable: false` (no drag or resize strip), and their details show "Only <name> can change this schedule." instead of Edit and Delete. On the server, `saveSchedule`, `reschedule` and `removeSchedule` check the owner first (`NOT_OWNER`), and `updateSchedule`, `rescheduleSchedule` and `deleteSchedule` also filter by `userId`.
   - **Developers** (`techSupportOnly(access)`): `listSchedules`, `findScheduleByUid` and `withLinks` take a `techSupportOnly` flag, so the week, opening a schedule by ID (`/api/schedules/[uid]`, 404 otherwise) and the linked-schedule lists only ever include schedules with `techSupportRequired`. The toolbar shows "Tech support schedules only".
 - **Fields:**
   - Required (set by the PM): `title`, `start` / `end`, `clientCompany`, `interviewer`, `meetingUrl`, `resumeUrl`, `jobDescriptionUrl`.

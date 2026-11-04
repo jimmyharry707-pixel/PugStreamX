@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { getCurrentUser } from "@/features/account/auth/dal";
 import { GROUP_PARAM } from "@/features/organization/groups/constants";
 import { calendarAccess, techSupportOnly } from "@/features/scheduling/schedules/access";
@@ -23,6 +24,6 @@ export async function GET(request: Request) {
     return Response.json({ error: "Invalid range" }, { status: 400 });
   }
 
-  const schedules = await listSchedules(access.groupId, from, to, techSupportOnly(access));
+  const schedules = await listSchedules(access.groupId, from, to, { techSupportOnly: techSupportOnly(access), viewerId: new ObjectId(user.id) });
   return Response.json({ schedules }, { headers: { "Cache-Control": "private, no-store" } });
 }

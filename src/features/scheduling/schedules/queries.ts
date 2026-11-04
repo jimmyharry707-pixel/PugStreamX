@@ -15,7 +15,18 @@ export function linkedUidsOf(doc: ScheduleDoc): string[] {
   return doc.linkedUids ?? (doc.linkedUid ? [doc.linkedUid] : []);
 }
 
-export function toSchedule(doc: ScheduleDoc, linked: LinkedSchedule[] = [], profileManager: ScheduleOwner | null = null): Schedule {
+/**
+ * How to read schedules for a viewer. `techSupportOnly` (Developers, `techSupportOnly(access)`):
+ * only those that need a tech supporter. `viewerId`: sets `Schedule.mine` on the ones they made.
+ */
+export type ScheduleReadOptions = { techSupportOnly?: boolean; viewerId?: ObjectId | null };
+
+export function toSchedule(
+  doc: ScheduleDoc,
+  linked: LinkedSchedule[] = [],
+  profileManager: ScheduleOwner | null = null,
+  viewerId: ObjectId | null = null,
+): Schedule {
   return {
     id: doc._id.toHexString(),
     uid: doc.uid,
@@ -38,6 +49,7 @@ export function toSchedule(doc: ScheduleDoc, linked: LinkedSchedule[] = [], prof
     callerNote: doc.callerNote ?? null,
     doneAt: doc.doneAt?.toISOString() ?? null,
     profileManager,
+    mine: !!viewerId && doc.userId.equals(viewerId),
   };
 }
 
@@ -142,7 +154,11 @@ async function ownersOf(groupId: ObjectId, docs: ScheduleDoc[]): Promise<Map<str
  * them filled in. With `techSupportOnly` (Developers), only linked schedules that need a tech
  * supporter are included.
  */
-export async function withLinks(groupId: ObjectId, docs: ScheduleDoc[], techSupportOnly = false): Promise<Schedule[]> {
+export async function withLinks(
+  groupId: ObjectId,
+  docs: ScheduleDoc[],
+  { techSupportOnly = false, viewerId = null }: ScheduleReadOptions = {},
+): Promise<Schedule[]> {
   const uids = [...new Set(docs.flatMap(linkedUidsOf))];
   const schedules = await getCollection<ScheduleDoc>("schedules");
   const [linkedDocs, owners] = await Promise.all([
@@ -157,33 +173,33 @@ export async function withLinks(groupId: ObjectId, docs: ScheduleDoc[], techSupp
       doc,
       linkedUidsOf(doc).flatMap((uid) => byUid.get(uid) ?? []),
       owners.get(doc.userId.toHexString()) ?? null,
+      viewerId,
     ),
   );
 }
 
-/**
- * A group's schedules that overlap [from, to), earliest first. `techSupportOnly` (Developers,
- * `techSupportOnly(access)`): only those that need a tech supporter.
- */
-export async function listSchedules(groupId: ObjectId, from: Date, to: Date, techSupportOnly = false): Promise<Schedule[]> {
+/** A group's schedules that overlap [from, to), earliest first (see ScheduleReadOptions). */
+export async function listSchedules(groupId: ObjectId, from: Date, to: Date, options: ScheduleReadOptions = {}): Promise<Schedule[]> {
+  const { techSupportOnly = false } = options;
   await upgradeOlderSchedules(groupId);
   const schedules = await getCollection<ScheduleDoc>("schedules");
   const docs = await schedules
     .find({ groupId, start: { $lt: to }, end: { $gt: from }, ...(techSupportOnly ? TECH_SUPPORT : {}) })
     .sort({ start: 1 })
     .toArray();
-  return withLinks(groupId, await withUids(docs), techSupportOnly);
+  return withLinks(groupId, await withUids(docs), options);
 }
 
 /**
  * One of the group's schedules by its `uid`, or null (also for other groups' schedules, and for
  * Developers, `techSupportOnly`, schedules that don't need a tech supporter).
  */
-export async function findScheduleByUid(groupId: ObjectId, uid: string, techSupportOnly = false): Promise<Schedule | null> {
+export async function findScheduleByUid(groupId: ObjectId, uid: string, options: ScheduleReadOptions = {}): Promise<Schedule | null> {
+  const { techSupportOnly = false } = options;
   await upgradeOlderSchedules(groupId);
   const schedules = await getCollection<ScheduleDoc>("schedules");
   const doc = await schedules.findOne({ groupId, uid, ...(techSupportOnly ? TECH_SUPPORT : {}) });
-  return doc ? (await withLinks(groupId, [doc], techSupportOnly))[0] : null;
+  return doc ? (await withLinks(groupId, [doc], options))[0] : null;
 }
 
 /** Which of `uids` are schedules in the group. */

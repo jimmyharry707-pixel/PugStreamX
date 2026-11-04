@@ -89,6 +89,8 @@ export type Schedule = Omit<ScheduleInput, "start" | "end" | "timeZone" | "meeti
   linked: LinkedSchedule[];
   /** The Profile Manager who made it (a group can have several), or null if their account is gone. */
   profileManager: ScheduleOwner | null;
+  /** True if the viewer made it: only they can edit, drag or delete it. */
+  mine: boolean;
 };
 
 /**

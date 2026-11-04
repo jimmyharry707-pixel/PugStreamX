@@ -73,7 +73,7 @@ function ScheduleId({ uid }: { uid: string }) {
  * `backTitle` / `onBack` return to the schedule this one was opened from.
  *
  * Everyone who can open it sees every field. `mode` decides the rest: "manage" (Profile Manager)
- * shows Edit and Delete, "call" (Caller) shows the caller form, "support" (Developer) and "view"
+ * shows Edit and Delete on their own schedules (`schedule.mine`), "call" (Caller) shows the caller form, "support" (Developer) and "view"
  * (super-admin) nothing more.
  */
 export function PsScheduleDetails({
@@ -253,7 +253,14 @@ export function PsScheduleDetails({
 
       {mode === "call" && <PsCallerForm key={schedule.id} schedule={schedule} onSaved={onCallerSaved} />}
 
-      {mode === "manage" && (
+      {mode === "manage" && !schedule.mine && (
+        // A group can have several Profile Managers; each changes only their own schedules.
+        <p data-not-mine className="text-right text-xs text-gray-500">
+          Only {schedule.profileManager?.fullName ?? "the Profile Manager who made it"} can change this schedule.
+        </p>
+      )}
+
+      {mode === "manage" && schedule.mine && (
         <div className="flex flex-wrap justify-end gap-2">
           <PsButton type="button" variant="danger" size="sm" onClick={onDelete} disabled={pending}>
             {pending ? "Deleting…" : "Delete"}

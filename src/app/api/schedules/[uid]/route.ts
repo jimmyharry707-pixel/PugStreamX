@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { getCurrentUser } from "@/features/account/auth/dal";
 import { GROUP_PARAM } from "@/features/organization/groups/constants";
 import { calendarAccess, techSupportOnly } from "@/features/scheduling/schedules/access";
@@ -16,7 +17,7 @@ export async function GET(request: Request, { params }: RouteContext<"/api/sched
 
   const { uid } = await params;
   if (!SCHEDULE_UID_PATTERN.test(uid)) return Response.json({ error: "Not found" }, { status: 404 });
-  const schedule = await findScheduleByUid(access.groupId, uid, techSupportOnly(access));
+  const schedule = await findScheduleByUid(access.groupId, uid, { techSupportOnly: techSupportOnly(access), viewerId: new ObjectId(user.id) });
   if (!schedule) return Response.json({ error: "Not found" }, { status: 404 });
   return Response.json({ schedule }, { headers: { "Cache-Control": "private, no-store" } });
 }

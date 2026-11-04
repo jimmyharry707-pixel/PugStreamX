@@ -11,11 +11,21 @@ import { findGroupUids, findScheduleDoc } from "./queries";
 import type { CallerIntent, Schedule } from "./types";
 import { callerSchema, normalizeUid, rescheduleSchema, scheduleSchema } from "./validation";
 
-// Profile Managers change their group's schedules; Callers only fill in the caller fields.
+// Profile Managers make schedules in their group and change only their own (a group can have
+// several PMs; the others see them read-only); Callers only fill in the caller fields.
 // Each action checks that itself (access.ts), so hidden buttons are never the only guard.
 
 const NOT_MANAGER = "Only Profile Managers in this group can change schedules.";
 const NOT_CALLER = "Only Callers in this group can fill this in.";
+const NOT_OWNER = "Only the Profile Manager who made this schedule can change it.";
+const GONE = "This schedule no longer exists.";
+
+/** Why a Profile Manager can't change a schedule: it's gone, or it's another PM's. Null if it's theirs. */
+async function ownerProblem(groupId: ObjectId, ownerId: ObjectId, scheduleId: string): Promise<string | null> {
+  const doc = ObjectId.isValid(scheduleId) ? await findScheduleDoc(groupId, new ObjectId(scheduleId)) : null;
+  if (!doc) return GONE;
+  return doc.userId.equals(ownerId) ? null : NOT_OWNER;
+}
 
 /** The signed-in user's group, if they're one of its Profile Managers (or Callers, with "call"). */
 async function groupFor(mode: "manage" | "call") {
@@ -51,7 +61,8 @@ export async function saveSchedule(_prev: ScheduleFormState, formData: FormData)
   const scheduleId = formData.get("scheduleId");
   const editing = typeof scheduleId === "string" && scheduleId !== "";
   const current = editing && ObjectId.isValid(scheduleId) ? await findScheduleDoc(groupId, new ObjectId(scheduleId)) : null;
-  if (editing && !current) return failed({ form: ["This schedule no longer exists."] });
+  if (editing && !current) return failed({ form: [GONE] });
+  if (current && !current.userId.equals(new ObjectId(user.id))) return failed({ form: [NOT_OWNER] });
 
   const parsed = scheduleSchema.safeParse({ ...Object.fromEntries(formData), linkedUids: linkedValues });
 
@@ -79,8 +90,8 @@ export async function saveSchedule(_prev: ScheduleFormState, formData: FormData)
   }
 
   if (current) {
-    const saved = await updateSchedule(groupId, current._id, parsed.data);
-    if (!saved) return failed({ form: ["This schedule no longer exists."] });
+    const saved = await updateSchedule(groupId, current.userId, current._id, parsed.data);
+    if (!saved) return failed({ form: [GONE] });
     return { saved };
   }
   return { saved: await createSchedule(groupId, new ObjectId(user.id), parsed.data) };
@@ -134,24 +145,30 @@ export async function saveCallerFields(_prev: CallerFormState, formData: FormDat
   return { saved, intent, message: intent === "done" ? "Marked as done." : intent === "reopen" ? "No longer done." : "Saved." };
 }
 
-/** Saves new times for a schedule moved or resized by dragging (ISO strings). Profile Managers only. */
+/** Saves new times for a schedule moved or resized by dragging (ISO strings). Its own Profile Manager only. */
 export async function reschedule(
   scheduleId: string,
   start: string,
   end: string,
 ): Promise<{ ok: true; schedule: Schedule } | { ok: false; message: string }> {
-  const { groupId } = await groupFor("manage");
+  const { user, groupId } = await groupFor("manage");
   if (!groupId) return { ok: false, message: NOT_MANAGER };
   const parsed = rescheduleSchema.safeParse({ scheduleId, start, end });
   if (!parsed.success) return { ok: false, message: "That time isn't valid." };
-  const schedule = await rescheduleSchedule(groupId, new ObjectId(parsed.data.scheduleId), parsed.data.start, parsed.data.end);
-  return schedule ? { ok: true, schedule } : { ok: false, message: "This schedule no longer exists." };
+  const me = new ObjectId(user.id);
+  const problem = await ownerProblem(groupId, me, parsed.data.scheduleId);
+  if (problem) return { ok: false, message: problem };
+  const schedule = await rescheduleSchedule(groupId, me, new ObjectId(parsed.data.scheduleId), parsed.data.start, parsed.data.end);
+  return schedule ? { ok: true, schedule } : { ok: false, message: GONE };
 }
 
-/** Deletes a schedule. Profile Managers only. */
+/** Deletes a schedule. Its own Profile Manager only. */
 export async function removeSchedule(scheduleId: string): Promise<{ ok: boolean; message: string }> {
-  const { groupId } = await groupFor("manage");
+  const { user, groupId } = await groupFor("manage");
   if (!groupId) return { ok: false, message: NOT_MANAGER };
-  const deleted = ObjectId.isValid(scheduleId) && (await deleteSchedule(groupId, new ObjectId(scheduleId)));
-  return deleted ? { ok: true, message: "Schedule deleted." } : { ok: false, message: "This schedule no longer exists." };
+  const me = new ObjectId(user.id);
+  const problem = await ownerProblem(groupId, me, scheduleId);
+  if (problem) return { ok: false, message: problem };
+  const deleted = await deleteSchedule(groupId, me, new ObjectId(scheduleId));
+  return deleted ? { ok: true, message: "Schedule deleted." } : { ok: false, message: GONE };
 }

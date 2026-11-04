@@ -4,8 +4,9 @@ import { getCollection } from "@/lib/db/client";
 import { isDuplicateUid, newScheduleUid, withLinks } from "./queries";
 import type { CallerInput, Schedule, ScheduleDoc, ScheduleInput } from "./types";
 
-// Every write is filtered by `groupId`, so schedules only change within their group's calendar.
-// Callers (actions.ts) check the role first.
+// Every write is filtered by `groupId`, so schedules only change within their group's calendar,
+// and a Profile Manager's edits, drags and deletes also by `userId`: only the PM who made a
+// schedule can change it. Callers (actions.ts) check the role first.
 
 export async function createSchedule(groupId: ObjectId, userId: ObjectId, input: ScheduleInput): Promise<Schedule> {
   const now = new Date();
@@ -25,7 +26,7 @@ export async function createSchedule(groupId: ObjectId, userId: ObjectId, input:
     };
     try {
       await schedules.insertOne(doc);
-      return (await withLinks(groupId, [doc]))[0];
+      return (await withLinks(groupId, [doc], { viewerId: userId }))[0];
     } catch (err) {
       // The 10-digit ID was already taken (rare): draw another.
       if (!isDuplicateUid(err) || attempt >= 4) throw err;
@@ -36,11 +37,11 @@ export async function createSchedule(groupId: ObjectId, userId: ObjectId, input:
 /** Moved to start in the future: the interview hasn't started yet, so it's no longer done. */
 const notDoneIfAhead = (start: Date) => (start.getTime() > Date.now() ? { doneAt: null } : {});
 
-/** A Profile Manager's edit. Null if the schedule isn't in the group. */
-export async function updateSchedule(groupId: ObjectId, scheduleId: ObjectId, input: ScheduleInput): Promise<Schedule | null> {
+/** A Profile Manager's edit of their own schedule. Null if it isn't in the group or isn't theirs. */
+export async function updateSchedule(groupId: ObjectId, ownerId: ObjectId, scheduleId: ObjectId, input: ScheduleInput): Promise<Schedule | null> {
   const schedules = await getCollection<ScheduleDoc>("schedules");
   const doc = await schedules.findOneAndUpdate(
-    { _id: scheduleId, groupId },
+    { _id: scheduleId, groupId, userId: ownerId },
     {
       // Screen share no longer required: the Caller's link goes too.
       $set: { ...input, ...(input.screenShareRequired ? {} : { screenShareUrl: null }), ...notDoneIfAhead(input.start), updatedAt: new Date() },
@@ -49,7 +50,7 @@ export async function updateSchedule(groupId: ObjectId, scheduleId: ObjectId, in
     },
     { returnDocument: "after" },
   );
-  return doc ? (await withLinks(groupId, [doc]))[0] : null;
+  return doc ? (await withLinks(groupId, [doc], { viewerId: ownerId }))[0] : null;
 }
 
 /**
@@ -74,21 +75,21 @@ export async function updateCallerFields(
   return doc ? (await withLinks(groupId, [doc]))[0] : null;
 }
 
-/** Changes only the times (dragging in the calendar). Null if the schedule isn't in the group. */
-export async function rescheduleSchedule(groupId: ObjectId, scheduleId: ObjectId, start: Date, end: Date): Promise<Schedule | null> {
+/** Changes only the times (dragging in the calendar). Null if it isn't in the group or isn't the owner's. */
+export async function rescheduleSchedule(groupId: ObjectId, ownerId: ObjectId, scheduleId: ObjectId, start: Date, end: Date): Promise<Schedule | null> {
   const schedules = await getCollection<ScheduleDoc>("schedules");
   const doc = await schedules.findOneAndUpdate(
-    { _id: scheduleId, groupId },
+    { _id: scheduleId, groupId, userId: ownerId },
     { $set: { start, end, ...notDoneIfAhead(start), updatedAt: new Date() } },
     { returnDocument: "after" },
   );
-  return doc ? (await withLinks(groupId, [doc]))[0] : null;
+  return doc ? (await withLinks(groupId, [doc], { viewerId: ownerId }))[0] : null;
 }
 
-/** False if the schedule isn't in the group. It's removed from other schedules' links. */
-export async function deleteSchedule(groupId: ObjectId, scheduleId: ObjectId): Promise<boolean> {
+/** False if it isn't in the group or isn't the owner's. It's removed from other schedules' links. */
+export async function deleteSchedule(groupId: ObjectId, ownerId: ObjectId, scheduleId: ObjectId): Promise<boolean> {
   const schedules = await getCollection<ScheduleDoc>("schedules");
-  const doc = await schedules.findOneAndDelete({ _id: scheduleId, groupId });
+  const doc = await schedules.findOneAndDelete({ _id: scheduleId, groupId, userId: ownerId });
   if (!doc) return false;
   if (doc.uid) {
     await schedules.updateMany({ groupId, linkedUids: doc.uid }, { $pull: { linkedUids: doc.uid } });

@@ -38,6 +38,8 @@ export type CalendarEvent = {
   techSupport?: boolean;
   /** Its Profile Manager's color (1 to 8, `--color-pm-<n>`); the event color without one. */
   color?: number;
+  /** False: this block can't be dragged or resized (another Profile Manager's schedule). */
+  editable?: boolean;
 };
 
 /**
@@ -282,7 +284,7 @@ export function PsCalendarTimeGrid({
                       }}
                       onPointerDown={(e) => {
                         skipEventClick.current = false; // a new press starts fresh (even after Esc)
-                        if (!editable || e.button !== 0 || e.pointerType === "touch") return;
+                        if (!editable || event.editable === false || e.button !== 0 || e.pointerType === "touch") return;
                         e.preventDefault();
                         e.currentTarget.setPointerCapture(e.pointerId);
                         eventDragRef.current = {
@@ -363,7 +365,7 @@ export function PsCalendarTimeGrid({
                       {/* From an hour up there is room for a third line: the client and the PM. */}
                       {minutes >= 60 && event.detail && <span className="ps-calendar-time-grid__meta truncate">{event.detail}</span>}
                       {/* Drag the bottom edge to change when it ends. */}
-                      {editable && <span aria-hidden className="ps-calendar-time-grid__resize" />}
+                      {editable && event.editable !== false && <span aria-hidden className="ps-calendar-time-grid__resize" />}
                     </button>
                   );
                 })}
