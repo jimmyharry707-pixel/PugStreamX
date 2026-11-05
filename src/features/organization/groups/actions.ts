@@ -29,7 +29,7 @@ export async function saveGroup(_prev: GroupFormState, formData: FormData): Prom
   return { saved: true };
 }
 
-/** Deletes an empty group. Super-admins only. */
+/** Deletes a group without members, and its schedules. Super-admins only. */
 export async function removeGroup(groupId: string): Promise<{ ok: boolean; message: string }> {
   await requireSuperAdmin();
   const parsed = deleteGroupSchema.safeParse({ groupId });
@@ -39,13 +39,14 @@ export async function removeGroup(groupId: string): Promise<{ ok: boolean; messa
     return {
       ok: false,
       message:
-        result.reason === "not_empty"
-          ? "Only empty groups can be deleted. Move its members to other groups and delete its schedules first."
+        result.reason === "has_members"
+          ? "Only groups without members can be deleted. Move its members to other groups first."
           : "This group no longer exists.",
     };
   }
   refresh();
-  return { ok: true, message: "Group deleted." };
+  const n = result.schedules;
+  return { ok: true, message: n ? `Group and its ${n} ${n === 1 ? "schedule" : "schedules"} deleted.` : "Group deleted." };
 }
 
 /** Puts a user in a group, or none. Super-admins only. */

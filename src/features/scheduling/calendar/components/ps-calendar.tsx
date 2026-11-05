@@ -13,6 +13,7 @@ import { SCHEDULES_API_PATH } from "@/features/scheduling/schedules/constants";
 import { formatShortDate, formatTimeRange, minutesToTime } from "@/features/scheduling/schedules/format";
 import type { CalendarMode, Schedule } from "@/features/scheduling/schedules/types";
 import { useSchedules } from "@/features/scheduling/schedules/use-schedules";
+import { useLatestReached } from "@/features/scheduling/schedules/use-started";
 import { snackbar } from "@/features/shared/snackbar/store";
 import { zonedTime, zonedToUtc } from "@/lib/utils/time-zone";
 import { addDays, isSameDay, parseDateKey, toDateKey, weekDays } from "../dates";
@@ -28,7 +29,7 @@ type DialogState =
   | { mode: "edit"; schedule: Schedule };
 
 /** A schedule as blocks on the grid, in `timeZone`: one block, or two if it crosses midnight. */
-function toEvents(schedule: Schedule, timeZone: string, now: Date): CalendarEvent[] {
+function toEvents(schedule: Schedule, timeZone: string, passedUntil: number): CalendarEvent[] {
   const start = zonedTime(new Date(schedule.start), timeZone);
   const end = zonedTime(new Date(schedule.end), timeZone);
   const base = {
@@ -41,7 +42,7 @@ function toEvents(schedule: Schedule, timeZone: string, now: Date): CalendarEven
     techSupport: schedule.techSupportRequired,
     color: schedule.profileManager?.color,
     // Only the Profile Manager who made it can drag it, and only until it has passed (ended).
-    editable: schedule.mine && new Date(schedule.end) > now,
+    editable: schedule.mine && Date.parse(schedule.end) > passedUntil,
   };
   if (isSameDay(start.day, end.day)) return [{ ...base, key: schedule.id, day: start.day, start: start.minutes, end: end.minutes }];
   return [
@@ -92,6 +93,8 @@ export function PsCalendar({ mode, groups = [] }: { mode: CalendarMode; groups?:
     return { from: zonedToUtc(weekKey, "00:00", timeZone), to: zonedToUtc(nextWeek, "00:00", timeZone) };
   }, [weekKey, timeZone]);
   const { schedules, failed, reload, patch } = useSchedules(range, groupQuery);
+  // The latest schedule end already reached, exactly (not on the minute tick): blocks lock when they pass.
+  const passedUntil = useLatestReached(schedules.map((s) => Date.parse(s.end)));
 
   useEffect(() => {
     if (failed) snackbar.error("Couldn't load the schedules. Check your connection and reload the page.");
@@ -149,9 +152,9 @@ export function PsCalendar({ mode, groups = [] }: { mode: CalendarMode; groups?:
   }, [date, go]);
 
   // Today and the time zone are only known in the browser, so wait for them.
-  if (!date || !now || !zoned || !timeZone || timeZoneSetting === null) return <PsCalendarSkeleton />;
+  if (!date || !zoned || !timeZone || timeZoneSetting === null) return <PsCalendarSkeleton />;
 
-  const events = schedules.flatMap((schedule) => toEvents(schedule, timeZone, now));
+  const events = schedules.flatMap((schedule) => toEvents(schedule, timeZone, passedUntil));
 
   const onSaved = (schedule: Schedule, created: boolean) => {
     setDialog(null);
@@ -319,6 +322,7 @@ export function PsCalendar({ mode, groups = [] }: { mode: CalendarMode; groups?:
         >
           <PsScheduleForm
             scheduleId={dialog.mode === "edit" ? dialog.schedule.id : undefined}
+            passesAt={dialog.mode === "edit" ? dialog.schedule.end : undefined}
             defaults={dialog.mode === "edit" ? editDefaults(dialog.schedule) : dialog.defaults}
             onSaved={(schedule) => onSaved(schedule, dialog.mode === "create")}
             onCancel={() => setDialog(null)}

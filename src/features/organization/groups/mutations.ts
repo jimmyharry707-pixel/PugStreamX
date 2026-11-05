@@ -1,6 +1,6 @@
 import "server-only";
 import { MongoServerError, ObjectId } from "mongodb";
-import type { ScheduleDoc } from "@/features/scheduling/schedules/types";
+import { deleteSchedulesOf } from "@/features/scheduling/schedules/mutations";
 import type { UserDoc } from "@/features/account/users/types";
 import { getCollection } from "@/lib/db/client";
 import type { GroupDoc } from "./types";
@@ -30,15 +30,14 @@ export async function renameGroup(id: ObjectId, name: string): Promise<{ ok: tru
   }
 }
 
-/** Only empty groups (no members, no schedules) can be deleted, so nothing is left without a group. */
-export async function deleteGroup(id: ObjectId): Promise<{ ok: true } | { ok: false; reason: "not_found" | "not_empty" }> {
-  const [groups, users, schedules] = await Promise.all([
-    getCollection<GroupDoc>("groups"),
-    getCollection<UserDoc>("users"),
-    getCollection<ScheduleDoc>("schedules"),
-  ]);
-  const [members, scheduleCount] = await Promise.all([users.countDocuments({ groupId: id }), schedules.countDocuments({ groupId: id })]);
-  if (members || scheduleCount) return { ok: false, reason: "not_empty" };
+/**
+ * Deletes a group that has no members (so nobody is left without a group), along with its
+ * schedules: past schedules can't be deleted one by one, so they go with their group.
+ */
+export async function deleteGroup(id: ObjectId): Promise<{ ok: true; schedules: number } | { ok: false; reason: "not_found" | "has_members" }> {
+  const [groups, users] = await Promise.all([getCollection<GroupDoc>("groups"), getCollection<UserDoc>("users")]);
+  if (await users.countDocuments({ groupId: id })) return { ok: false, reason: "has_members" };
   const result = await groups.deleteOne({ _id: id });
-  return result.deletedCount ? { ok: true } : { ok: false, reason: "not_found" };
+  if (!result.deletedCount) return { ok: false, reason: "not_found" };
+  return { ok: true, schedules: await deleteSchedulesOf(id) };
 }

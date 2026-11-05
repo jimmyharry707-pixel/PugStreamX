@@ -12,7 +12,7 @@ import { PsGroupForm } from "./ps-group-form";
 
 /**
  * Admin > Groups: the list of groups with "New group", and Rename / Delete per group. New and
- * Rename open a popup; Delete asks first and only works for empty groups.
+ * Rename open a popup; Delete asks first and only works for groups without members; their schedules go with them.
  */
 export function PsGroupManager({ groups }: { groups: GroupListItem[] }) {
   const [editing, setEditing] = useState<{ group?: Group } | null>(null);
@@ -21,7 +21,9 @@ export function PsGroupManager({ groups }: { groups: GroupListItem[] }) {
   async function onDelete(group: GroupListItem) {
     const ok = await confirm({
       title: `Delete "${group.name}"?`,
-      message: "The group will be permanently deleted. This can't be undone.",
+      message: group.scheduleCount
+        ? `The group and its ${group.scheduleCount} ${group.scheduleCount === 1 ? "schedule" : "schedules"} (past ones too) will be permanently deleted. This can't be undone.`
+        : "The group will be permanently deleted. This can't be undone.",
       confirmLabel: "Delete group",
       tone: "danger",
     });

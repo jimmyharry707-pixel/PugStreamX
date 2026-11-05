@@ -8,7 +8,7 @@ import { calendarAccess } from "./access";
 import type { CallerField, ScheduleField } from "./constants";
 import { createSchedule, deleteSchedule, rescheduleSchedule, updateCallerFields, updateSchedule } from "./mutations";
 import { findGroupUids, findScheduleDoc } from "./queries";
-import type { CallerIntent, Schedule } from "./types";
+import type { CallerIntent, Schedule, ScheduleDoc } from "./types";
 import { callerSchema, normalizeUid, rescheduleSchema, scheduleSchema } from "./validation";
 
 // Profile Managers make schedules in their group and change only their own (a group can have
@@ -21,16 +21,31 @@ const NOT_OWNER = "Only the Profile Manager who made this schedule can change it
 const GONE = "This schedule no longer exists.";
 const PASSED = "This schedule has passed, so it can't be changed or deleted.";
 
-/** Why a Profile Manager can't change a schedule: it's gone, another PM's, or has passed. Null if they can. */
-async function ownerProblem(groupId: ObjectId, ownerId: ObjectId, scheduleId: string): Promise<string | null> {
+const ENDS_IN_PAST = "This time has already passed. Pick an end time in the future.";
+
+/** A schedule has passed once its end time is reached. Past schedules are locked (records). */
+const hasPassed = (end: Date) => end.getTime() <= Date.now();
+
+/**
+ * The schedule, if the Profile Manager may change it: it's in the group, theirs, and hasn't passed.
+ * Otherwise why not. The one place these rules live (the mutations also filter by them, for races).
+ */
+async function changeable(
+  groupId: ObjectId,
+  ownerId: ObjectId,
+  scheduleId: string,
+): Promise<{ doc: ScheduleDoc; problem: null } | { doc: null; problem: string }> {
   const doc = ObjectId.isValid(scheduleId) ? await findScheduleDoc(groupId, new ObjectId(scheduleId)) : null;
-  if (!doc) return GONE;
-  if (!doc.userId.equals(ownerId)) return NOT_OWNER;
-  return hasPassed(doc.end) ? PASSED : null;
+  if (!doc) return { doc: null, problem: GONE };
+  if (!doc.userId.equals(ownerId)) return { doc: null, problem: NOT_OWNER };
+  if (hasPassed(doc.end)) return { doc: null, problem: PASSED };
+  return { doc, problem: null };
 }
 
-/** A schedule has passed once its end time is reached. */
-const hasPassed = (end: Date) => end.getTime() <= Date.now();
+/** Why a write that matched nothing failed (e.g. it passed in the meantime), read again. */
+async function whyFailed(groupId: ObjectId, ownerId: ObjectId, scheduleId: string): Promise<string> {
+  return (await changeable(groupId, ownerId, scheduleId)).problem ?? GONE;
+}
 
 /** The signed-in user's group, if they're one of its Profile Managers (or Callers, with "call"). */
 async function groupFor(mode: "manage" | "call") {
@@ -63,12 +78,15 @@ export async function saveSchedule(_prev: ScheduleFormState, formData: FormData)
   });
   if (!groupId) return failed({ form: [NOT_MANAGER] });
 
+  const me = new ObjectId(user.id);
   const scheduleId = formData.get("scheduleId");
   const editing = typeof scheduleId === "string" && scheduleId !== "";
-  const current = editing && ObjectId.isValid(scheduleId) ? await findScheduleDoc(groupId, new ObjectId(scheduleId)) : null;
-  if (editing && !current) return failed({ form: [GONE] });
-  if (current && !current.userId.equals(new ObjectId(user.id))) return failed({ form: [NOT_OWNER] });
-  if (current && hasPassed(current.end)) return failed({ form: [PASSED] });
+  let current: ScheduleDoc | null = null;
+  if (editing) {
+    const check = await changeable(groupId, me, scheduleId);
+    if (check.problem) return failed({ form: [check.problem] });
+    current = check.doc;
+  }
 
   const parsed = scheduleSchema.safeParse({ ...Object.fromEntries(formData), linkedUids: linkedValues });
 
@@ -95,12 +113,15 @@ export async function saveSchedule(_prev: ScheduleFormState, formData: FormData)
     return failed(fieldErrors, rowErrors);
   }
 
+  // It would be locked at once (past schedules can't be changed or deleted), so a slip couldn't be undone.
+  if (hasPassed(parsed.data.end)) return failed({ to: [ENDS_IN_PAST] });
+
   if (current) {
-    const saved = await updateSchedule(groupId, current.userId, current._id, parsed.data);
-    if (!saved) return failed({ form: [GONE] });
+    const saved = await updateSchedule(groupId, me, current._id, parsed.data);
+    if (!saved) return failed({ form: [await whyFailed(groupId, me, current._id.toHexString())] });
     return { saved };
   }
-  return { saved: await createSchedule(groupId, new ObjectId(user.id), parsed.data) };
+  return { saved: await createSchedule(groupId, me, parsed.data) };
 }
 
 export type CallerFormState =
@@ -162,10 +183,11 @@ export async function reschedule(
   const parsed = rescheduleSchema.safeParse({ scheduleId, start, end });
   if (!parsed.success) return { ok: false, message: "That time isn't valid." };
   const me = new ObjectId(user.id);
-  const problem = await ownerProblem(groupId, me, parsed.data.scheduleId);
+  const { problem } = await changeable(groupId, me, parsed.data.scheduleId);
   if (problem) return { ok: false, message: problem };
+  if (hasPassed(parsed.data.end)) return { ok: false, message: ENDS_IN_PAST };
   const schedule = await rescheduleSchedule(groupId, me, new ObjectId(parsed.data.scheduleId), parsed.data.start, parsed.data.end);
-  return schedule ? { ok: true, schedule } : { ok: false, message: GONE };
+  return schedule ? { ok: true, schedule } : { ok: false, message: await whyFailed(groupId, me, parsed.data.scheduleId) };
 }
 
 /** Deletes a schedule. Its own Profile Manager only. */
@@ -173,8 +195,8 @@ export async function removeSchedule(scheduleId: string): Promise<{ ok: boolean;
   const { user, groupId } = await groupFor("manage");
   if (!groupId) return { ok: false, message: NOT_MANAGER };
   const me = new ObjectId(user.id);
-  const problem = await ownerProblem(groupId, me, scheduleId);
+  const { problem } = await changeable(groupId, me, scheduleId);
   if (problem) return { ok: false, message: problem };
   const deleted = await deleteSchedule(groupId, me, new ObjectId(scheduleId));
-  return deleted ? { ok: true, message: "Schedule deleted." } : { ok: false, message: GONE };
+  return deleted ? { ok: true, message: "Schedule deleted." } : { ok: false, message: await whyFailed(groupId, me, scheduleId) };
 }

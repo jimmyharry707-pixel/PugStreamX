@@ -97,3 +97,10 @@ export async function deleteSchedule(groupId: ObjectId, ownerId: ObjectId, sched
   }
   return true;
 }
+
+/** Deletes every schedule in a group (when the group itself is deleted). Past ones included. */
+export async function deleteSchedulesOf(groupId: ObjectId): Promise<number> {
+  const schedules = await getCollection<ScheduleDoc>("schedules");
+  const { deletedCount } = await schedules.deleteMany({ groupId });
+  return deletedCount;
+}

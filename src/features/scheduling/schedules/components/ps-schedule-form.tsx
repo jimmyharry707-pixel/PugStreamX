@@ -12,10 +12,13 @@ import { saveSchedule } from "../actions";
 import { PsLinkedSchedulesField } from "./ps-linked-schedules-field";
 import { NAME_MAX, NOTE_MAX, TITLE_MAX, URL_MAX, type ScheduleField } from "../constants";
 import type { Schedule } from "../types";
+import { useReached } from "../use-started";
 
 export type ScheduleFormDefaults = Partial<Record<Exclude<ScheduleField, "linkedUids">, string>> & { linkedUids?: string[] };
 
 const NO_LINKS: string[] = [];
+/** A time that's never reached (for a new schedule, which has no end to pass yet). */
+const NEVER = "9999-12-31T23:59:59.999Z";
 
 /**
  * Create or edit a schedule (edit when `scheduleId` is set). The date and times are read in
@@ -24,11 +27,14 @@ const NO_LINKS: string[] = [];
  */
 export function PsScheduleForm({
   scheduleId,
+  passesAt,
   defaults,
   onSaved,
   onCancel,
 }: {
   scheduleId?: string;
+  /** When editing: the schedule's current end (ISO). Once reached it's locked, so Save turns off. */
+  passesAt?: string;
   /** Must include `timeZone`. */
   defaults: ScheduleFormDefaults & { timeZone: string };
   onSaved: (schedule: Schedule) => void;
@@ -39,6 +45,8 @@ export function PsScheduleForm({
   const errors = state?.errors ?? {};
   const linkedValues = state?.linkedValues ?? defaults.linkedUids ?? NO_LINKS;
   const [timeZone, setTimeZone] = useState(defaults.timeZone);
+  // A new schedule never "passes" while being written (its end is checked on Save instead).
+  const passed = useReached(passesAt ?? NEVER);
 
   useEffect(() => {
     if (state?.saved) onSaved(state.saved);
@@ -49,7 +57,11 @@ export function PsScheduleForm({
   return (
     <form action={formAction} noValidate className="space-y-4">
       {scheduleId && <input type="hidden" name="scheduleId" value={scheduleId} />}
-      {errors.form && <PsAlert>{errors.form[0]}</PsAlert>}
+      {passed ? (
+        <PsAlert>This schedule has passed while you were editing, so it can&apos;t be changed anymore.</PsAlert>
+      ) : (
+        errors.form && <PsAlert>{errors.form[0]}</PsAlert>
+      )}
 
       <PsFormField label="Title" name="title" required maxLength={TITLE_MAX} defaultValue={values.title} errors={errors.title} />
 
@@ -141,7 +153,7 @@ export function PsScheduleForm({
         <PsButton type="button" variant="secondary" size="sm" onClick={onCancel}>
           Cancel
         </PsButton>
-        <PsButton type="submit" size="sm" disabled={pending} className="min-w-24">
+        <PsButton type="submit" size="sm" disabled={pending || passed} className="min-w-24">
           {pending ? "Saving…" : "Save"}
         </PsButton>
       </div>
