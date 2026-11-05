@@ -44,10 +44,13 @@ export function PsPagination({
   total,
   href,
   label = "Pages",
+  param = "page",
   className,
 }: Pick<Page, "page" | "pageCount" | "pageSize" | "total"> & {
   href: string;
-  /** Accessible name, e.g. "Invoice pages". */
+  /** The search param that holds the page (default `page`), for a second list on one URL, e.g. a dialog. */
+  param?: string;
+    /** Accessible name, e.g. "Invoice pages". */
   label?: string;
   className?: string;
 }) {
@@ -64,7 +67,7 @@ export function PsPagination({
       {pageCount > 1 && (
         <ul className="flex items-center gap-1">
           <li>
-            <Arrow href={page > 1 ? withPage(href, page - 1) : null} label="Previous page">
+            <Arrow href={page > 1 ? withPage(href, page - 1, param) : null} label="Previous page">
               <path d="m15 6-6 6 6 6" />
             </Arrow>
           </li>
@@ -76,7 +79,7 @@ export function PsPagination({
             ) : (
               <li key={item}>
                 <Link
-                  href={withPage(href, item)}
+                  href={withPage(href, item, param)}
                   scroll={false}
                   aria-label={`Page ${item}`}
                   aria-current={item === page ? "page" : undefined}
@@ -92,7 +95,7 @@ export function PsPagination({
             ),
           )}
           <li>
-            <Arrow href={page < pageCount ? withPage(href, page + 1) : null} label="Next page">
+            <Arrow href={page < pageCount ? withPage(href, page + 1, param) : null} label="Next page">
               <path d="m9 6 6 6-6 6" />
             </Arrow>
           </li>

@@ -40,12 +40,12 @@ export function pageItems(page: number, pageCount: number): (number | "gap")[] {
   return [1, "gap", page - 1, page, page + 1, "gap", pageCount];
 }
 
-/** `href` with `?page=N` set (page 1 drops it), keeping the other search params. */
-export function withPage(href: string, page: number): string {
+/** `href` with `?page=N` set (page 1 drops it), keeping the other search params. `param` renames `page` (two lists on one URL). */
+export function withPage(href: string, page: number, param = "page"): string {
   const [path, query = ""] = href.split("?");
   const params = new URLSearchParams(query);
-  if (page > 1) params.set("page", String(page));
-  else params.delete("page");
+  if (page > 1) params.set(param, String(page));
+  else params.delete(param);
   const next = params.toString();
   return next ? `${path}?${next}` : path;
 }

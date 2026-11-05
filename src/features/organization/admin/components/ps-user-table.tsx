@@ -8,6 +8,7 @@ import {
   PsTableRow,
   PsTableRowLink,
 } from "@/components/ui/ps-table";
+import { PsLinkButton } from "@/components/ui/ps-button";
 import { roleLabel } from "@/features/account/users/roles";
 import type { UserListItem } from "@/features/account/users/types";
 import { PsUserActiveButton } from "./ps-user-active-button";
@@ -16,7 +17,7 @@ import { PsUserStatusBadge } from "./ps-user-status-badge";
 const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" });
 
 /**
- * Every account, with its role, status and an Activate / Deactivate button.
+ * Every account, with its role, status, a Show activity link and an Activate / Deactivate button.
  * Clicking a row opens that user's full profile (`profileHref`).
  * On phones each row is a card: the member on top, status + role + button below.
  */
@@ -24,11 +25,14 @@ export function PsUserTable({
   users,
   currentUserId,
   profileHref,
+  activityHref,
   groupNames,
 }: {
   users: UserListItem[];
   currentUserId: string;
   profileHref: (userId: string) => string;
+  /** Opens that user's recent activity. */
+  activityHref: (userId: string) => string;
   /** Group id → name. */
   groupNames: Record<string, string>;
 }) {
@@ -89,14 +93,20 @@ export function PsUserTable({
                 <time dateTime={user.createdAt}>{dateFormat.format(new Date(user.createdAt))}</time>
               </PsTableCell>
               <PsTableCell stack="auto" align="end" aboveRowLink>
-                {/* You can't lock yourself out, and active founders can't be deactivated. */}
-                {isSelf || (user.isSuperAdmin && user.active) ? (
-                  <span className="hidden text-xs text-gray-500 sm:inline">—</span>
-                ) : (
-                  <div className="flex justify-end">
-                    <PsUserActiveButton userId={user.id} active={user.active} name={name} />
-                  </div>
-                )}
+                <div className="flex justify-end gap-2">
+                  <PsLinkButton
+                    href={activityHref(user.id)}
+                    scroll={false}
+                    variant="secondary"
+                    size="sm"
+                    aria-label={`Show ${name}'s activity`}
+                    className="whitespace-nowrap px-3 py-1.5 text-xs"
+                  >
+                    Show activity
+                  </PsLinkButton>
+                  {/* You can't lock yourself out, and active founders can't be deactivated. */}
+                  {!(isSelf || (user.isSuperAdmin && user.active)) && <PsUserActiveButton userId={user.id} active={user.active} name={name} />}
+                </div>
               </PsTableCell>
             </PsTableRow>
           );

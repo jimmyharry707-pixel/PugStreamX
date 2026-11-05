@@ -15,6 +15,7 @@ export const COLLECTIONS = {
   invoices: "ps_invoices",
   notifications: "ps_notifications",
   workResults: "ps_work_results",
+  activities: "ps_activities",
 } as const satisfies Record<string, `ps_${string}`>;
 
 export type CollectionKey = keyof typeof COLLECTIONS;
@@ -95,5 +96,9 @@ export const INDEXES: Record<CollectionKey, IndexDescription[]> = {
     { key: { userId: 1, createdAt: -1 } },
     // Refusing a page they already uploaded.
     { key: { userId: 1, "files.sha256": 1 } },
+  ],
+  activities: [
+    // A member's activity, newest first (dashboard, Admin › Users › Show activity).
+    { key: { userId: 1, createdAt: -1 } },
   ],
 };

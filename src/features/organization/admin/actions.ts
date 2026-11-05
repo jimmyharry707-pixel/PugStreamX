@@ -3,6 +3,7 @@
 import { ObjectId } from "mongodb";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
+import { deleteActivitiesOf, recordActivity } from "@/features/account/activity/mutations";
 import { requireSuperAdmin } from "@/features/account/auth/dal";
 import { deleteUserSessions } from "@/features/account/auth/session";
 import { deleteAvatar } from "@/features/account/profile/avatar";
@@ -15,6 +16,9 @@ import { ADMIN_USERS_PATH } from "./constants";
 import { deleteUserSchema, setUserActiveSchema, setUserRoleSchema } from "./validation";
 
 export type AdminActionResult = { ok: boolean; message: string } | undefined;
+
+/** A member as named in activity: @display name, or their email before the profile is done. */
+const who = (user: { email: string; profile?: { displayName: string } | null }) => (user.profile ? `@${user.profile.displayName}` : user.email);
 
 const INVALID = { ok: false, message: "That request wasn't valid. Reload the page and try again." };
 
@@ -40,6 +44,7 @@ export async function setUserActive(_prev: AdminActionResult, formData: FormData
   // Re-render the list with the new status.
   refresh();
   const name = result.user.profile?.displayName ?? result.user.email;
+  await recordActivity(admin.id, "admin", `${active ? "Activated" : "Deactivated"} the account of ${who(result.user)}`);
   return { ok: true, message: active ? `${name} can now sign in.` : `${name} has been deactivated and signed out.` };
 }
 
@@ -57,11 +62,12 @@ export async function setUserRole(_prev: AdminActionResult, formData: FormData):
 
   refresh();
   const name = result.user.profile?.displayName ?? result.user.email;
+  await recordActivity(admin.id, "admin", `Changed the role of ${who(result.user)} to ${roleLabel(role)}`);
   return { ok: true, message: `${name}'s role is now ${roleLabel(role)}.` };
 }
 
 /**
- * Permanently deletes another account: the user, their sessions, their avatar, chats and work results. Founders
+ * Permanently deletes another account: the user, their sessions, their avatar, chats, work results and activity. Founders
  * can't be deleted. On success, closes the profile dialog by going back to the list.
  */
 export async function removeUser(_prev: AdminActionResult, formData: FormData): Promise<AdminActionResult> {
@@ -83,8 +89,10 @@ export async function removeUser(_prev: AdminActionResult, formData: FormData): 
   if (result.user.profile?.avatarId) await deleteAvatar(result.user.profile.avatarId);
   await deleteConversationsOf(id);
   await deleteWorkResultsOf(id);
+  await deleteActivitiesOf(id);
 
   const name = result.user.profile?.displayName ?? result.user.email;
+  await recordActivity(admin.id, "admin", `Deleted the account of ${who(result.user)}`);
   await flashSnackbar({ type: "success", message: `${name}'s account has been deleted.` });
   redirect(ADMIN_USERS_PATH);
 }

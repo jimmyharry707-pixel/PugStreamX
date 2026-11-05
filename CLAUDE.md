@@ -18,6 +18,7 @@ before starting work, and add a new summary when the user asks to save the chat 
     - Render `<PsPagination {...page} href="<list URL without page>" label="… pages" />`. Other search params in `href` (filters) are kept.
     - It shows "Showing 11–20 of 45" and ‹ 1 … 4 5 6 … 9 › (at most 7 numbers). It renders nothing for an empty list.
     - Links that open a row (e.g. `?invoice=<id>`) keep the current `page`, so closing the dialog returns to it.
+    - A second list on the same URL (e.g. inside a dialog) gets its own page param: `<PsPagination param="activityPage" … />` (`withPage(href, n, param)`), so the list behind it keeps `?page`.
   - `PsCopyButton` copies a value ("Copy", then "Copied"). `PsStat` is a summary tile: a label, a big value and a line under it.
   - **Every table uses `PsTable`** (`ps-table.tsx`) and its parts (`PsTableHead`, `PsTableBody`, `PsTableRow`, `PsTableHeaderCell`, `PsTableCell`, `PsTableRowLink`), never a raw `<table>`.
     - `hideBelow="md"` hides a column on smaller screens; give its header cell the same value.
@@ -75,7 +76,7 @@ src/
 
   | Category | Features |
   |---|---|
-  | `account/` | `auth` (sign-in, sessions), `profile` (required profile, avatar), `users` (user documents, roles) |
+  | `account/` | `auth` (sign-in, sessions), `profile` (required profile, avatar), `users` (user documents, roles), `activity` (recent activity) |
   | `scheduling/` | `calendar` (the week grid, dates, time zones), `schedules` (the events on it) |
   | `organization/` | `groups`, `admin` (the super-admin panel) |
   | `communication/` | `chat` (direct messages), `notifications` (founders' announcements, topbar bell) |
@@ -287,6 +288,16 @@ src/
 - `WorkResult` carries no user ids or disk paths. `WorkResult.seeker` (name, display name, photo) is only filled in on the group view.
 - Deleting an account (Admin) also deletes its work results and their folder (`deleteWorkResultsOf`).
 
+### Activity (`src/features/account/activity/`)
+
+- **Every action records what the member did** in `ps_activities` (`ActivityDoc`: `userId`, `kind`, `text`, `createdAt`). Call `recordActivity(userId, kind, text)` (`mutations.ts`) in every new server action or route handler that changes something, once the change is made and before any `redirect()`. It never fails the action; errors are only logged.
+  - `kind` is one of `ACTIVITY_KINDS` (`account`, `schedule`, `chat`, `invoice`, `work`, `admin`), shown as a badge (`ACTIVITY_KIND_LABELS`; `work` reads "Seeker").
+  - `text` is written at that moment from the member's point of view ("Created the schedule “Interview” (ID 4829103756)"), so it still reads right after what it names is gone. Quote names and titles with `quoted()`; people are `@display name` (or the email before the profile is done). Chat records only who a message went to, never its text.
+  - Recorded today: sign up, sign in, sign out, complete or update the profile; create, edit, move and delete a schedule; the Caller's link, Done and Undo done; send a chat message; request or review a payment; upload a work result; and the founders' admin actions (activate or deactivate, role, group, delete an account; create, rename or delete a group; publish, edit or delete a notification). Reading things (opening pages, marking chats read) isn't recorded.
+- **Dashboard** (`/`): the member's own activity, newest first, 10 per page (`ACTIVITY_PAGE_SIZE`, `PsActivityList` with `PsPagination`).
+- **Admin › Users:** super-admins see anyone's with **Show activity** (`?activity=<id>&activityPage=N`). Only `requireSuperAdmin()` pages may list someone else's (`listActivitiesPage(userId, page)`).
+- Times are shown in the calendar's chosen zone, else the device's (`PsActivityTime`). Deleting an account deletes its activity (`deleteActivitiesOf`).
+
 ## 4. Authentication
 
 - Custom email + password auth. Users live in `ps_users`; sessions live in `ps_sessions`, stored as SHA-256 hashes of the random token in the `ps_session` cookie.
@@ -307,7 +318,8 @@ src/
 - Admin pages live under `/admin` (`src/features/organization/admin/`). Only super-admins see the left-panel **Admin** button, which opens a popup menu. Its links are `ADMIN_NAV_ITEMS` (`features/organization/admin/constants.ts`), so add new admin pages there. `/admin` itself redirects to the first one.
 - `/admin/users` lists every account with Activate / Deactivate buttons.
   - The list is paginated, 10 per page (`listUsersPage` + `PsPagination`). The query sorts inactive accounts first, then newest first, and the filter chips count every account. The page and the `?status=` filter stay in the URL when a profile is opened and closed.
-  - Clicking a row opens the full profile in a `PsModal` (`?user=<id>`), where the role and group can be changed and the account deleted (after the confirm popup). Deleting removes the user, their sessions and avatar file. Founders can't be deleted (change their role first). Super-admins can't change their own role, deactivate or delete themselves, so one always remains.
+  - Clicking a row opens the full profile in a `PsModal` (`?user=<id>`), where the role and group can be changed and the account deleted (after the confirm popup). Deleting removes the user, their sessions, avatar file, chats, work results and activity. Founders can't be deleted (change their role first). Super-admins can't change their own role, deactivate or delete themselves, so one always remains.
+  - Each row's **Show activity** button opens that member's recent activity in a `PsModal` (`?activity=<id>`, paged with `?activityPage=N` so the list keeps its `?page`). See the Activity section above.
 - Admin pages, actions and route handlers must call `requireSuperAdmin()` (`features/account/auth/dal.ts`), which returns a 404 for everyone else. Super-admin accounts can't be deactivated from there.
 
 ### Required profile (`src/features/account/profile/`)

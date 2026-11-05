@@ -26,7 +26,8 @@ export async function updateNotification(id: ObjectId, input: NotificationInput)
   return result.matchedCount === 1;
 }
 
-export async function deleteNotification(id: ObjectId): Promise<boolean> {
+/** The deleted notification's title, or null if it no longer existed. */
+export async function deleteNotification(id: ObjectId): Promise<string | null> {
   const notifications = await getCollection<NotificationDoc>("notifications");
-  return (await notifications.deleteOne({ _id: id })).deletedCount === 1;
+  return (await notifications.findOneAndDelete({ _id: id }))?.title ?? null;
 }

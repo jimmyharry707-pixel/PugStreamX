@@ -3,6 +3,8 @@
 import { ObjectId } from "mongodb";
 import { refresh, updateTag } from "next/cache";
 import { z } from "zod";
+import { quoted } from "@/features/account/activity/constants";
+import { recordActivity } from "@/features/account/activity/mutations";
 import { requireSuperAdmin } from "@/features/account/auth/dal";
 import { formValues, type FormState } from "@/lib/utils/form";
 import { NOTIFICATIONS_TAG, type NotificationField } from "./constants";
@@ -22,8 +24,10 @@ export async function saveNotification(_prev: NotificationFormState, formData: F
     if (!(await updateNotification(new ObjectId(notificationId), input))) {
       return { errors: { form: ["This notification no longer exists."] }, values: formValues(formData) };
     }
+    await recordActivity(admin.id, "admin", `Edited the notification ${quoted(input.title)}${input.published ? "" : " (draft)"}`);
   } else {
     await createNotification(new ObjectId(admin.id), input);
+    await recordActivity(admin.id, "admin", `${input.published ? "Published" : "Saved a draft of"} the notification ${quoted(input.title)}`);
   }
   // Members' bells read the cached list.
   updateTag(NOTIFICATIONS_TAG);
@@ -33,11 +37,11 @@ export async function saveNotification(_prev: NotificationFormState, formData: F
 
 /** Deletes a notification. Super-admins only. */
 export async function removeNotification(notificationId: string): Promise<{ ok: boolean; message: string }> {
-  await requireSuperAdmin();
+  const admin = await requireSuperAdmin();
   const parsed = deleteNotificationSchema.safeParse({ notificationId });
-  if (!parsed.success || !(await deleteNotification(new ObjectId(parsed.data.notificationId)))) {
-    return { ok: false, message: "This notification no longer exists." };
-  }
+  const title = parsed.success ? await deleteNotification(new ObjectId(parsed.data.notificationId)) : null;
+  if (title === null) return { ok: false, message: "This notification no longer exists." };
+  await recordActivity(admin.id, "admin", `Deleted the notification ${quoted(title)}`);
   updateTag(NOTIFICATIONS_TAG);
   refresh();
   return { ok: true, message: "Notification deleted." };

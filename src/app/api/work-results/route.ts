@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { ObjectId } from "mongodb";
+import { recordActivity } from "@/features/account/activity/mutations";
 import { getCurrentUser } from "@/features/account/auth/dal";
 import { seekerAccess } from "@/features/work/seeker/access";
 import { WORK_FILE_EXTENSION, WORK_FILES_MAX, WORK_UPLOAD_MAX_BYTES, formatBytes } from "@/features/work/seeker/constants";
@@ -72,5 +73,6 @@ export async function POST(request: Request) {
   if (errors.length > 0) return fail(errors);
 
   const doc = await createWorkResult(userId, files);
+  await recordActivity(userId, "work", `Uploaded a work result (${doc.bidCount} ${doc.bidCount === 1 ? "bid" : "bids"})`);
   return Response.json({ ok: true, bidCount: doc.bidCount } satisfies UploadResponse, { headers: { "Cache-Control": "no-store" } });
 }

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { HOME_PATH, SIGN_IN_PATH } from "@/features/account/auth/constants";
 import { getCurrentUser, requireCompleteProfile } from "@/features/account/auth/dal";
+import { recordActivity } from "@/features/account/activity/mutations";
 import { flashSnackbar } from "@/features/shared/snackbar/flash";
 import { setUserProfile, updateUserProfile } from "@/features/account/users/mutations";
 import { findUserById } from "@/features/account/users/queries";
@@ -48,6 +49,7 @@ export async function completeProfile(_prev: FormState<ProfileField>, formData: 
     return { errors: { displayName: ["That display name is already taken."] }, values: formValues(formData) };
   }
 
+  await recordActivity(userId, "account", "Completed the profile");
   await flashSnackbar({ type: "success", message: "Your profile is complete. Welcome to PugStreamX!" });
   redirect(HOME_PATH);
 }
@@ -90,6 +92,7 @@ export async function updateProfile(_prev: FormState<ProfileField>, formData: Fo
   // Only remove the old photo once the new one is saved on the profile.
   if (newAvatarId && previous?.profile?.avatarId) await deleteAvatar(previous.profile.avatarId);
 
+  await recordActivity(userId, "account", newAvatarId ? "Updated the profile and photo" : "Updated the profile");
   await flashSnackbar({ type: "success", message: "Your profile has been updated." });
   redirect(PROFILE_PATH);
 }

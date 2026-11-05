@@ -3,9 +3,11 @@
 import { ObjectId } from "mongodb";
 import { refresh } from "next/cache";
 import { z } from "zod";
+import { recordActivity } from "@/features/account/activity/mutations";
 import { requireCompleteProfile, requireSuperAdmin } from "@/features/account/auth/dal";
 import { formValues, type FormState } from "@/lib/utils/form";
-import type { InvoiceField, ReviewField } from "./constants";
+import { PAYMENT_METHOD_INFO, type InvoiceField, type ReviewField } from "./constants";
+import { formatAmount } from "./format";
 import { createInvoice, reviewInvoice } from "./mutations";
 import { findInvoice } from "./queries";
 import { invoiceSchema, reviewSchema } from "./validation";
@@ -21,6 +23,7 @@ export async function requestPayment(_prev: InvoiceFormState, formData: FormData
   if (!parsed.success) return { errors: z.flattenError(parsed.error).fieldErrors, values: formValues(formData) };
 
   await createInvoice(new ObjectId(user.id), parsed.data);
+  await recordActivity(user.id, "invoice", `Requested a payment of ${formatAmount(parsed.data.amountCents)} by ${PAYMENT_METHOD_INFO[parsed.data.method].short}`);
   // Show it at the top of the history.
   refresh();
   return { sentAt: Date.now() };
@@ -39,6 +42,11 @@ export async function reviewPayment(_prev: ReviewFormState, formData: FormData):
   if (!ok) {
     const current = await findInvoice(new ObjectId(invoiceId));
     return { errors: { form: [current ? "This invoice has already been reviewed." : "This invoice no longer exists."] }, values: formValues(formData) };
+  }
+  const reviewed = await findInvoice(new ObjectId(invoiceId));
+  if (reviewed) {
+    const from = reviewed.member ? `@${reviewed.member.displayName}` : "a former member";
+    await recordActivity(admin.id, "invoice", `${decision === "accept" ? "Accepted" : "Rejected"} the payment request of ${formatAmount(reviewed.amountCents)} from ${from}`);
   }
   refresh();
   return { message: decision === "accept" ? "Invoice accepted." : "Invoice rejected." };

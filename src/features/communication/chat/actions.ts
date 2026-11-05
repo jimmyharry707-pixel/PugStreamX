@@ -1,6 +1,7 @@
 "use server";
 
 import { ObjectId } from "mongodb";
+import { recordActivity } from "@/features/account/activity/mutations";
 import { requireCompleteProfile } from "@/features/account/auth/dal";
 import { publishChatEvent } from "./bus";
 import { markConversationRead, createMessage } from "./mutations";
@@ -31,6 +32,8 @@ export async function sendChatMessage(to: string, text: string): Promise<{ ok: t
   const doc = await createMessage(me, toId, parsed.data.text);
   publishChatEvent(toId.toHexString(), { type: "message", with: user.id, message: toChatMessage(doc, toId) });
   publishChatEvent(user.id, { type: "message", with: toId.toHexString(), message: toChatMessage(doc, me) });
+  // Who, not what: the text stays private to the two of them.
+  await recordActivity(me, "chat", `Sent a message to @${member.displayName}`);
   return { ok: true, message: toChatMessage(doc, me) };
 }
 

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { recordActivity } from "@/features/account/activity/mutations";
 import { COMPLETE_PROFILE_PATH } from "@/features/account/profile/constants";
 import { flashSnackbar } from "@/features/shared/snackbar/flash";
 import { createUser, ensureFounder } from "@/features/account/users/mutations";
@@ -10,6 +11,7 @@ import { formValues, type FormState } from "@/lib/utils/form";
 import { HOME_PATH, SIGN_IN_PATH } from "./constants";
 import { getDummyHash, hashPassword, verifyPassword } from "./password";
 import { createSession, deleteSession } from "./session";
+import { getCurrentUser } from "./dal";
 import { signInSchema, signUpSchema } from "./validation";
 
 export async function signUp(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -23,6 +25,8 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
   if (!result.ok) {
     return { errors: { email: ["An account with this email already exists."] }, values: formValues(formData) };
   }
+
+  await recordActivity(result.user._id, "account", "Created an account");
 
   // The first account on a new database becomes the founder and is active straight away.
   await ensureFounder();
@@ -64,6 +68,7 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   }
 
   await createSession(user._id);
+  await recordActivity(user._id, "account", "Signed in");
   if (!user.profile?.completedAt) {
     await flashSnackbar({ type: "info", message: "Complete your profile to continue." });
     redirect(COMPLETE_PROFILE_PATH);
@@ -73,6 +78,9 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
 }
 
 export async function signOut() {
+  // Before the session goes, to know who it was.
+  const user = await getCurrentUser();
+  if (user) await recordActivity(user.id, "account", "Signed out");
   await deleteSession();
   await flashSnackbar({ type: "info", message: "You've been signed out." });
   redirect(SIGN_IN_PATH);

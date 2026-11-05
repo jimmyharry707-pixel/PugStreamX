@@ -2,6 +2,8 @@
 
 import { ObjectId } from "mongodb";
 import { z } from "zod";
+import { quoted } from "@/features/account/activity/constants";
+import { recordActivity } from "@/features/account/activity/mutations";
 import { requireCompleteProfile } from "@/features/account/auth/dal";
 import { formValues, type FormState } from "@/lib/utils/form";
 import { calendarAccess } from "./access";
@@ -21,7 +23,10 @@ const NOT_OWNER = "Only the Profile Manager who made this schedule can change it
 const GONE = "This schedule no longer exists.";
 const PASSED = "This schedule has passed, so it can't be changed or deleted.";
 
-const ENDS_IN_PAST = "This time has already passed. Pick an end time in the future.";
+/** A schedule as named in activity: “Title” (ID 4829103756). */
+const named = (s: { title: string; uid?: string | null }) => `${quoted(s.title)}${s.uid ? ` (ID ${s.uid})` : ""}`;
+
+const ENDS_IN_PAST ="This time has already passed. Pick an end time in the future.";
 
 /** A schedule has passed once its end time is reached. Past schedules are locked (records). */
 const hasPassed = (end: Date) => end.getTime() <= Date.now();
@@ -119,9 +124,12 @@ export async function saveSchedule(_prev: ScheduleFormState, formData: FormData)
   if (current) {
     const saved = await updateSchedule(groupId, me, current._id, parsed.data);
     if (!saved) return failed({ form: [await whyFailed(groupId, me, current._id.toHexString())] });
+    await recordActivity(me, "schedule", `Edited the schedule ${named(saved)}`);
     return { saved };
   }
-  return { saved: await createSchedule(groupId, me, parsed.data) };
+  const saved = await createSchedule(groupId, me, parsed.data);
+  await recordActivity(me, "schedule", `Created the schedule ${named(saved)}`);
+  return { saved };
 }
 
 export type CallerFormState =
@@ -141,7 +149,7 @@ export type CallerFormState =
  * Callers only.
  */
 export async function saveCallerFields(_prev: CallerFormState, formData: FormData): Promise<CallerFormState> {
-  const { groupId } = await groupFor("call");
+  const { user, groupId } = await groupFor("call");
   const failed = (errors: NonNullable<CallerFormState>["errors"]): CallerFormState => ({ errors, values: formValues(formData) });
   if (!groupId) return failed({ form: [NOT_CALLER] });
 
@@ -169,6 +177,17 @@ export async function saveCallerFields(_prev: CallerFormState, formData: FormDat
 
   const saved = await updateCallerFields(groupId, current, changes);
   if (!saved) return failed({ form: ["This schedule no longer exists."] });
+  await recordActivity(
+    user.id,
+    "schedule",
+    intent === "done"
+      ? `Marked the schedule ${named(saved)} as done`
+      : intent === "reopen"
+        ? `Undid done on the schedule ${named(saved)}`
+        : screenShareUrl
+          ? `Added the screen share link to the schedule ${named(saved)}`
+          : `Removed the screen share link from the schedule ${named(saved)}`,
+  );
   return { saved, intent, message: intent === "done" ? "Marked as done." : intent === "reopen" ? "No longer done." : "Saved." };
 }
 
@@ -187,7 +206,9 @@ export async function reschedule(
   if (problem) return { ok: false, message: problem };
   if (hasPassed(parsed.data.end)) return { ok: false, message: ENDS_IN_PAST };
   const schedule = await rescheduleSchedule(groupId, me, new ObjectId(parsed.data.scheduleId), parsed.data.start, parsed.data.end);
-  return schedule ? { ok: true, schedule } : { ok: false, message: await whyFailed(groupId, me, parsed.data.scheduleId) };
+  if (!schedule) return { ok: false, message: await whyFailed(groupId, me, parsed.data.scheduleId) };
+  await recordActivity(me, "schedule", `Moved the schedule ${named(schedule)} to a new time`);
+  return { ok: true, schedule };
 }
 
 /** Deletes a schedule. Its own Profile Manager only. */
@@ -195,8 +216,10 @@ export async function removeSchedule(scheduleId: string): Promise<{ ok: boolean;
   const { user, groupId } = await groupFor("manage");
   if (!groupId) return { ok: false, message: NOT_MANAGER };
   const me = new ObjectId(user.id);
-  const { problem } = await changeable(groupId, me, scheduleId);
-  if (problem) return { ok: false, message: problem };
+  const { doc, problem } = await changeable(groupId, me, scheduleId);
+  if (!doc) return { ok: false, message: problem ?? GONE };
   const deleted = await deleteSchedule(groupId, me, new ObjectId(scheduleId));
-  return deleted ? { ok: true, message: "Schedule deleted." } : { ok: false, message: await whyFailed(groupId, me, scheduleId) };
+  if (!deleted) return { ok: false, message: await whyFailed(groupId, me, scheduleId) };
+  await recordActivity(me, "schedule", `Deleted the schedule ${named(doc)}`);
+  return { ok: true, message: "Schedule deleted." };
 }
