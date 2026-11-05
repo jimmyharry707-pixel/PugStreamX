@@ -11,7 +11,7 @@ import { confirm } from "@/features/shared/confirm/store";
 import { removeSchedule } from "../actions";
 import { formatScheduleDate, formatShortDate, formatShortDateTime, formatTimeRange, safeUrl } from "../format";
 import type { CalendarMode, Schedule } from "../types";
-import { useStarted } from "../use-started";
+import { usePassed, useStarted } from "../use-started";
 import { PsCallerForm } from "./ps-caller-form";
 
 /** Background classes for the Profile Manager colors (written out so Tailwind finds them). */
@@ -62,7 +62,7 @@ function ScheduleId({ uid }: { uid: string }) {
  * `backTitle` / `onBack` return to the schedule this one was opened from.
  *
  * Everyone who can open it sees every field. `mode` decides the rest: "manage" (Profile Manager)
- * shows Edit and Delete on their own schedules (`schedule.mine`), "call" (Caller) shows the caller form, "support" (Developer) and "view"
+ * shows Edit and Delete on their own schedules (`schedule.mine`) until they've passed (ended), "call" (Caller) shows the caller form, "support" (Developer) and "view"
  * (super-admin) nothing more.
  */
 export function PsScheduleDetails({
@@ -95,6 +95,7 @@ export function PsScheduleDetails({
   const ownZone = schedule.timeZone ?? timeZone;
   const linked = schedule.linked;
   const started = useStarted(schedule.start);
+  const passed = usePassed(schedule.end);
 
   async function onDelete() {
     const ok = await confirm({
@@ -249,7 +250,14 @@ export function PsScheduleDetails({
         </p>
       )}
 
-      {mode === "manage" && schedule.mine && (
+      {mode === "manage" && schedule.mine && passed && (
+        // Once it has ended, it's a record: no more Edit or Delete (the actions check this too).
+        <p data-passed className="text-right text-xs text-gray-500">
+          This schedule has passed, so it can&apos;t be changed or deleted.
+        </p>
+      )}
+
+      {mode === "manage" && schedule.mine && !passed && (
         <div className="flex flex-wrap justify-end gap-2">
           <PsButton type="button" variant="danger" size="sm" onClick={onDelete} disabled={pending}>
             {pending ? "Deleting…" : "Delete"}

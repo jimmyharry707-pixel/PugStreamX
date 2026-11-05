@@ -37,11 +37,11 @@ export async function createSchedule(groupId: ObjectId, userId: ObjectId, input:
 /** Moved to start in the future: the interview hasn't started yet, so it's no longer done. */
 const notDoneIfAhead = (start: Date) => (start.getTime() > Date.now() ? { doneAt: null } : {});
 
-/** A Profile Manager's edit of their own schedule. Null if it isn't in the group or isn't theirs. */
+/** A Profile Manager's edit of their own schedule. Null if it isn't in the group, isn't theirs or has passed (ended). */
 export async function updateSchedule(groupId: ObjectId, ownerId: ObjectId, scheduleId: ObjectId, input: ScheduleInput): Promise<Schedule | null> {
   const schedules = await getCollection<ScheduleDoc>("schedules");
   const doc = await schedules.findOneAndUpdate(
-    { _id: scheduleId, groupId, userId: ownerId },
+    { _id: scheduleId, groupId, userId: ownerId, end: { $gt: new Date() } },
     {
       // Screen share no longer required: the Caller's link goes too.
       $set: { ...input, ...(input.screenShareRequired ? {} : { screenShareUrl: null }), ...notDoneIfAhead(input.start), updatedAt: new Date() },
@@ -75,21 +75,21 @@ export async function updateCallerFields(
   return doc ? (await withLinks(groupId, [doc]))[0] : null;
 }
 
-/** Changes only the times (dragging in the calendar). Null if it isn't in the group or isn't the owner's. */
+/** Changes only the times (dragging in the calendar). Null if it isn't in the group, isn't the owner's or has passed. */
 export async function rescheduleSchedule(groupId: ObjectId, ownerId: ObjectId, scheduleId: ObjectId, start: Date, end: Date): Promise<Schedule | null> {
   const schedules = await getCollection<ScheduleDoc>("schedules");
   const doc = await schedules.findOneAndUpdate(
-    { _id: scheduleId, groupId, userId: ownerId },
+    { _id: scheduleId, groupId, userId: ownerId, end: { $gt: new Date() } },
     { $set: { start, end, ...notDoneIfAhead(start), updatedAt: new Date() } },
     { returnDocument: "after" },
   );
   return doc ? (await withLinks(groupId, [doc], { viewerId: ownerId }))[0] : null;
 }
 
-/** False if it isn't in the group or isn't the owner's. It's removed from other schedules' links. */
+/** False if it isn't in the group, isn't the owner's or has passed (ended). It's removed from other schedules' links. */
 export async function deleteSchedule(groupId: ObjectId, ownerId: ObjectId, scheduleId: ObjectId): Promise<boolean> {
   const schedules = await getCollection<ScheduleDoc>("schedules");
-  const doc = await schedules.findOneAndDelete({ _id: scheduleId, groupId, userId: ownerId });
+  const doc = await schedules.findOneAndDelete({ _id: scheduleId, groupId, userId: ownerId, end: { $gt: new Date() } });
   if (!doc) return false;
   if (doc.uid) {
     await schedules.updateMany({ groupId, linkedUids: doc.uid }, { $pull: { linkedUids: doc.uid } });

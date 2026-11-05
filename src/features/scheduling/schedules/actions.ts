@@ -19,13 +19,18 @@ const NOT_MANAGER = "Only Profile Managers in this group can change schedules.";
 const NOT_CALLER = "Only Callers in this group can fill this in.";
 const NOT_OWNER = "Only the Profile Manager who made this schedule can change it.";
 const GONE = "This schedule no longer exists.";
+const PASSED = "This schedule has passed, so it can't be changed or deleted.";
 
-/** Why a Profile Manager can't change a schedule: it's gone, or it's another PM's. Null if it's theirs. */
+/** Why a Profile Manager can't change a schedule: it's gone, another PM's, or has passed. Null if they can. */
 async function ownerProblem(groupId: ObjectId, ownerId: ObjectId, scheduleId: string): Promise<string | null> {
   const doc = ObjectId.isValid(scheduleId) ? await findScheduleDoc(groupId, new ObjectId(scheduleId)) : null;
   if (!doc) return GONE;
-  return doc.userId.equals(ownerId) ? null : NOT_OWNER;
+  if (!doc.userId.equals(ownerId)) return NOT_OWNER;
+  return hasPassed(doc.end) ? PASSED : null;
 }
+
+/** A schedule has passed once its end time is reached. */
+const hasPassed = (end: Date) => end.getTime() <= Date.now();
 
 /** The signed-in user's group, if they're one of its Profile Managers (or Callers, with "call"). */
 async function groupFor(mode: "manage" | "call") {
@@ -63,6 +68,7 @@ export async function saveSchedule(_prev: ScheduleFormState, formData: FormData)
   const current = editing && ObjectId.isValid(scheduleId) ? await findScheduleDoc(groupId, new ObjectId(scheduleId)) : null;
   if (editing && !current) return failed({ form: [GONE] });
   if (current && !current.userId.equals(new ObjectId(user.id))) return failed({ form: [NOT_OWNER] });
+  if (current && hasPassed(current.end)) return failed({ form: [PASSED] });
 
   const parsed = scheduleSchema.safeParse({ ...Object.fromEntries(formData), linkedUids: linkedValues });
 

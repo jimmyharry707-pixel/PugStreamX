@@ -28,7 +28,7 @@ type DialogState =
   | { mode: "edit"; schedule: Schedule };
 
 /** A schedule as blocks on the grid, in `timeZone`: one block, or two if it crosses midnight. */
-function toEvents(schedule: Schedule, timeZone: string): CalendarEvent[] {
+function toEvents(schedule: Schedule, timeZone: string, now: Date): CalendarEvent[] {
   const start = zonedTime(new Date(schedule.start), timeZone);
   const end = zonedTime(new Date(schedule.end), timeZone);
   const base = {
@@ -40,8 +40,8 @@ function toEvents(schedule: Schedule, timeZone: string): CalendarEvent[] {
     done: !!schedule.doneAt,
     techSupport: schedule.techSupportRequired,
     color: schedule.profileManager?.color,
-    // Only the Profile Manager who made it can drag it.
-    editable: schedule.mine,
+    // Only the Profile Manager who made it can drag it, and only until it has passed (ended).
+    editable: schedule.mine && new Date(schedule.end) > now,
   };
   if (isSameDay(start.day, end.day)) return [{ ...base, key: schedule.id, day: start.day, start: start.minutes, end: end.minutes }];
   return [
@@ -62,7 +62,7 @@ function toEvents(schedule: Schedule, timeZone: string): CalendarEvent[] {
  * What the viewer can do depends on `mode` (decided on the server, access.ts):
  * - "manage" (Profile Manager): Create (or click or drag in an empty spot) opens the form; click a
  *   schedule for its details, then Edit or Delete; drag a schedule (or its bottom edge) to move it.
- *   Only their own schedules (`Schedule.mine`): other PMs' are read-only.
+ *   Only their own schedules (`Schedule.mine`) that haven't passed: other PMs' and past ones are read-only.
  * - "call" (Caller): see schedules; in the details, add the screen share link and a caller note.
  * - "support" (Developer): see only the schedules that need a tech supporter, read-only.
  * - "view" (super-admin): see any group's calendar, picked from `groups` (`?group=<id>`).
@@ -149,9 +149,9 @@ export function PsCalendar({ mode, groups = [] }: { mode: CalendarMode; groups?:
   }, [date, go]);
 
   // Today and the time zone are only known in the browser, so wait for them.
-  if (!date || !zoned || !timeZone || timeZoneSetting === null) return <PsCalendarSkeleton />;
+  if (!date || !now || !zoned || !timeZone || timeZoneSetting === null) return <PsCalendarSkeleton />;
 
-  const events = schedules.flatMap((schedule) => toEvents(schedule, timeZone));
+  const events = schedules.flatMap((schedule) => toEvents(schedule, timeZone, now));
 
   const onSaved = (schedule: Schedule, created: boolean) => {
     setDialog(null);

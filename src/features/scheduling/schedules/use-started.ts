@@ -6,11 +6,11 @@ import { useCallback, useSyncExternalStore } from "react";
 const MAX_TIMEOUT = 2 ** 31 - 1;
 
 /**
- * Whether the interview has started (`start`, an ISO time). It switches at that exact moment, like
- * the server's check in `saveCallerFields`, not on a minute tick. False while rendering on the server.
+ * Whether `at` (an ISO time) has been reached. It switches at that exact moment, like the server's
+ * checks, not on a minute tick. False while rendering on the server.
  */
-export function useStarted(start: string): boolean {
-  const time = new Date(start).getTime();
+export function useReached(at: string): boolean {
+  const time = new Date(at).getTime();
   const subscribe = useCallback(
     (onChange: () => void) => {
       let id: ReturnType<typeof setTimeout> | undefined;
@@ -26,3 +26,9 @@ export function useStarted(start: string): boolean {
   );
   return useSyncExternalStore(subscribe, () => Date.now() >= time, () => false);
 }
+
+/** Whether the interview has started (`start`), like the server's check in `saveCallerFields`. */
+export const useStarted = (start: string) => useReached(start);
+
+/** Whether the schedule has passed (its `end`): its Profile Manager can no longer change it. */
+export const usePassed = (end: string) => useReached(end);
