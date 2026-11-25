@@ -50,7 +50,7 @@ export async function completeProfile(_prev: FormState<ProfileField>, formData: 
   }
 
   await recordActivity(userId, "account", "Completed the profile");
-  await flashSnackbar({ type: "success", message: "Your profile is complete. Welcome to PugStreamX!" });
+  await flashSnackbar({ type: "success", message: "Your profile is complete. Welcome to GoldHorizon!" });
   redirect(HOME_PATH);
 }
 

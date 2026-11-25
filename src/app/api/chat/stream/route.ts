@@ -1,5 +1,8 @@
 import { getCurrentUser } from "@/features/account/auth/dal";
 import { subscribeChatEvents } from "@/features/communication/chat/bus";
+import { onlineIds, streamOpened } from "@/features/communication/chat/presence";
+import { onlineContactsOf } from "@/features/communication/chat/queries";
+import type { ChatStreamEvent } from "@/features/communication/chat/types";
 
 /** A comment line now and then keeps proxies from closing an idle stream. */
 const HEARTBEAT_MS = 25_000;
@@ -10,7 +13,8 @@ const HEARTBEAT_MS = 25_000;
 const LIFETIME_MS = 5 * 60_000;
 
 // GET /api/chat/stream: a server-sent event stream of the signed-in member's chat events
-// (`ChatStreamEvent`, as `data:` JSON): new messages to or from them, and conversations they read.
+// (`ChatStreamEvent`, as `data:` JSON): new messages to or from them, conversations they read, and
+// which of their contacts are online. While it's open, the member counts as online (presence.ts).
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user?.profileComplete) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,6 +33,11 @@ export async function GET(request: Request) {
       // Retry after 2 s if the connection drops; the first comment opens the stream at once.
       send("retry: 2000\n: connected\n\n");
       const unsubscribe = subscribeChatEvents(user.id, (event) => send(`data: ${JSON.stringify(event)}\n\n`));
+      // Online from now on (contacts are told), and this member learns who of theirs is online.
+      const offline = streamOpened(user);
+      onlineContactsOf(user, onlineIds())
+        .then((online) => send(`data: ${JSON.stringify({ type: "presence", online } satisfies ChatStreamEvent)}\n\n`))
+        .catch(() => {});
       const heartbeat = setInterval(() => send(": ping\n\n"), HEARTBEAT_MS);
       const end = setTimeout(() => {
         cleanup();
@@ -38,6 +47,7 @@ export async function GET(request: Request) {
       }, LIFETIME_MS);
       cleanup = () => {
         unsubscribe();
+        offline();
         clearInterval(heartbeat);
         clearTimeout(end);
       };

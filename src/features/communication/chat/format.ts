@@ -49,3 +49,8 @@ export function splitLinks(text: string): { text: string; href?: string }[] {
   if (last < text.length) parts.push({ text: text.slice(last) });
   return parts;
 }
+
+/** A contact's status for `PsAvatar` (undefined while not known yet). */
+export function memberStatus(online: ReadonlySet<string> | null, memberId: string): "online" | "offline" | undefined {
+  return online ? (online.has(memberId) ? "online" : "offline") : undefined;
+}

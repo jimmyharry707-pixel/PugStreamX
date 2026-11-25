@@ -18,7 +18,7 @@ export default function SignInPage() {
         description="Welcome back."
         footer={
           <>
-            New to PugStreamX?{" "}
+            New to GoldHorizon?{" "}
             <Link href="/signup" className="font-medium text-brand-400 hover:underline">Create an account</Link>
           </>
         }

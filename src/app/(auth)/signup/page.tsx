@@ -15,7 +15,7 @@ export default function SignUpPage() {
       </Suspense>
       <PsAuthCard
         title="Create your account"
-        description="Join PugStreamX with your email."
+        description="Join GoldHorizon with your email."
         footer={
           <>
             Already have an account?{" "}

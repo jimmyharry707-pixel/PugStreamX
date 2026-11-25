@@ -1,6 +1,8 @@
-# PugStreamX
+# GoldHorizon
 
 Next.js (App Router, Cache Components) + MongoDB. Project conventions are in [CLAUDE.md](CLAUDE.md).
+
+The site is called **GoldHorizon**. The code keeps its earlier internal name, PugStreamX: the database (`PugStreamX`), the `ps-` / `ps_` prefixes and the package name (`pugstreamx`) are unchanged, so existing data and sessions keep working.
 
 ## Setup
 

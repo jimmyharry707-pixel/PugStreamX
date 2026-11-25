@@ -16,10 +16,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "PugStreamX",
-    template: "%s · PugStreamX",
+    default: "GoldHorizon",
+    template: "%s · GoldHorizon",
   },
-  description: "PugStreamX live streaming.",
+  description: "GoldHorizon, our team workspace for schedules, chat and work.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

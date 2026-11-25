@@ -5,7 +5,8 @@ import { PsAvatar } from "@/components/ui/ps-avatar";
 import { PsButton } from "@/components/ui/ps-button";
 import { PsIconButton } from "@/components/ui/ps-icon-button";
 import { cn } from "@/lib/utils/cn";
-import { formatDayLabel, formatMessageTime, isSameLocalDay, splitLinks } from "../format";
+import { formatDayLabel, formatMessageTime, isSameLocalDay, memberStatus, splitLinks } from "../format";
+import { useOnlineMembers } from "../use-chat-stream";
 import type { ChatMember, ChatMessage } from "../types";
 import { PsChatComposer } from "./ps-chat-composer";
 
@@ -94,6 +95,10 @@ export function PsChatThread({
   }
 
   // Our own message: scroll down to it.
+  // Online status, only for someone the viewer can still message (others aren't tracked for them).
+  const online = useOnlineMembers();
+  const status = canSend ? memberStatus(online, member.id) : undefined;
+
   function send(text: string) {
     scrollPlan.current = { kind: "bottom" };
     return onSend(text);
@@ -107,9 +112,16 @@ export function PsChatThread({
             <path d="m15 6-6 6 6 6" />
           </svg>
         </PsIconButton>
-        <PsAvatar name={member.fullName} src={member.avatarUrl} size="md" />
+        <PsAvatar name={member.fullName} src={member.avatarUrl} size="md" status={status} />
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-semibold text-white">{member.fullName}</h2>
+          <h2 className="flex min-w-0 items-baseline gap-2 text-sm font-semibold text-white">
+            <span className="truncate">{member.fullName}</span>
+            {status && (
+              <span data-member-status={status} className={cn("shrink-0 text-[11px] font-medium", status === "online" ? "text-success-300" : "text-gray-500")}>
+                {status === "online" ? "Online" : "Offline"}
+              </span>
+            )}
+          </h2>
           <p className="truncate text-xs text-gray-500">
             @{member.displayName} · {member.isFounder ? "Founder" : [member.role, member.groupName].filter(Boolean).join(" · ")}
           </p>
