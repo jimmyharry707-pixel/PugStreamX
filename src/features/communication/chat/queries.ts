@@ -143,3 +143,15 @@ export async function listMessages(
   const hasMore = docs.length > MESSAGES_PAGE;
   return { messages: docs.slice(0, MESSAGES_PAGE).reverse().map((d) => toChatMessage(d, viewerId)), hasMore };
 }
+
+/**
+ * Of `online` (hex ids), the members `user` may see the status of: those they can message (the same people who can
+ * message them), as hex ids. Used for the stream's first presence list and to announce changes.
+ */
+export async function onlineContactsOf(user: PublicUser, online: string[]): Promise<string[]> {
+  const ids = online.filter((id) => id !== user.id && ObjectId.isValid(id));
+  if (ids.length === 0) return [];
+  const users = await getCollection<UserDoc>("users");
+  const docs = await users.find({ $and: [messageableBy(user), { _id: { $in: ids.map((id) => new ObjectId(id)) } }] }, { projection: { _id: 1 } }).toArray();
+  return docs.map((d) => d._id.toHexString());
+}

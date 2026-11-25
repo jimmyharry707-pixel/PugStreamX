@@ -5,7 +5,9 @@ import { PsAvatar } from "@/components/ui/ps-avatar";
 import { PsBadge } from "@/components/ui/ps-badge";
 import { PsDialog } from "@/components/ui/ps-dialog";
 import { PsInput } from "@/components/ui/ps-input";
+import { memberStatus } from "../format";
 import type { ChatMember } from "../types";
+import { useOnlineMembers } from "../use-chat-stream";
 
 type Section = { key: string; title: string; members: ChatMember[] };
 
@@ -45,6 +47,7 @@ export function PsChatMemberPicker({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const online = useOnlineMembers();
   const q = query.trim().toLowerCase();
   const shown = q ? members.filter((m) => m.fullName.toLowerCase().includes(q) || m.displayName.toLowerCase().includes(q)) : members;
   const sections = toSections(shown);
@@ -84,10 +87,11 @@ export function PsChatMemberPicker({
                         data-member-id={m.id}
                         className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-white/5"
                       >
-                        <PsAvatar name={m.fullName} src={m.avatarUrl} size="md" />
+                        <PsAvatar name={m.fullName} src={m.avatarUrl} size="md" status={memberStatus(online, m.id)} />
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-2">
                             <span className="truncate text-sm text-gray-100">{m.fullName}</span>
+                            {online?.has(m.id) && <span className="sr-only">(online)</span>}
                             {m.isFounder && (
                               <PsBadge variant="warning" className="shrink-0 px-2 text-[10px]">
                                 Founder

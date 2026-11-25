@@ -2,10 +2,11 @@
 
 import { PsAvatar } from "@/components/ui/ps-avatar";
 import { cn } from "@/lib/utils/cn";
-import { formatListTime, formatUnread } from "../format";
+import { formatListTime, formatUnread, memberStatus } from "../format";
 import type { ConversationSummary } from "../types";
+import { useOnlineMembers } from "../use-chat-stream";
 
-/** The viewer's conversations, most recent first. `selectedId` is the open one's member id. */
+/** The viewer's conversations, most recent first, with who's online. `selectedId` is the open one's member id. */
 export function PsChatList({
   conversations,
   selectedId,
@@ -16,6 +17,7 @@ export function PsChatList({
   selectedId: string | null;
   onSelect: (memberId: string) => void;
 }) {
+  const online = useOnlineMembers();
   if (!conversations) {
     return (
       <ul aria-busy="true" className="space-y-1 p-2">
@@ -47,10 +49,11 @@ export function PsChatList({
                 selected ? "bg-brand-400/10" : "hover:bg-white/5",
               )}
             >
-              <PsAvatar name={member.fullName} src={member.avatarUrl} size="md" />
+              <PsAvatar name={member.fullName} src={member.avatarUrl} size="md" status={memberStatus(online, member.id)} />
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline gap-2">
                   <span className={cn("truncate text-sm", unread ? "font-semibold text-white" : "text-gray-100")}>{member.fullName}</span>
+                  {online?.has(member.id) && <span className="sr-only">(online)</span>}
                   <span className="ml-auto shrink-0 text-[11px] text-gray-500">{formatListTime(lastMessage.createdAt)}</span>
                 </span>
                 <span className="flex items-center gap-2">

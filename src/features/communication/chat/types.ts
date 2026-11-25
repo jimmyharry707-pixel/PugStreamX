@@ -55,5 +55,14 @@ export type ConversationSummary = {
   unread: number;
 };
 
-/** What the live stream (`/api/chat/stream`) sends: a new message in the conversation with `with`. */
-export type ChatStreamEvent = { type: "message"; with: string; message: ChatMessage } | { type: "read"; with: string };
+/**
+ * What the live stream (`/api/chat/stream`) sends: a new message in the conversation with `with`,
+ * a conversation read, and who's online: `presence` (the viewer's online contacts, sent first on
+ * every connection, replaces what the browser knew) and `presence-change` (one contact came online
+ * or went offline). Only contacts the viewer can message are included.
+ */
+export type ChatStreamEvent =
+  | { type: "message"; with: string; message: ChatMessage }
+  | { type: "read"; with: string }
+  | { type: "presence"; online: string[] }
+  | { type: "presence-change"; id: string; online: boolean };

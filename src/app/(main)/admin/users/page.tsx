@@ -56,7 +56,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
     <div className="mx-auto w-full max-w-5xl p-4 sm:p-6 lg:p-8">
       <h1 className="text-2xl font-bold">Users</h1>
       <p className="mt-1 text-sm text-gray-400">
-        Every account on PugStreamX. New accounts can&apos;t sign in until you activate them. Click a row to see the full
+        Every account on GoldHorizon. New accounts can&apos;t sign in until you activate them. Click a row to see the full
         profile and change the role.
       </p>
 

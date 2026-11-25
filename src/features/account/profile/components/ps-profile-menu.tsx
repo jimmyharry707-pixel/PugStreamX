@@ -4,13 +4,15 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { PsAvatar } from "@/components/ui/ps-avatar";
 import { signOut } from "@/features/account/auth/actions";
+import { useSelfOnline } from "@/features/communication/chat/use-chat-stream";
 import { PROFILE_PATH } from "../constants";
 
 const itemClass =
   "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-gray-200 outline-none transition hover:bg-white/10 focus-visible:bg-white/10";
 
 /**
- * Topbar profile badge. Clicking it opens a menu with "Update profile" and "Sign out".
+ * Topbar profile badge, with the member's online status (a dot on the photo: online while this tab's
+ * live connection is open). Clicking it opens a menu with "Update profile" and "Sign out".
  * Keyboard: Enter/Space/↓ opens, ↑/↓/Home/End move, Esc closes and returns focus, Tab closes.
  */
 export function PsProfileMenu({
@@ -32,6 +34,10 @@ export function PsProfileMenu({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
+  // Null until the browser knows (server render): no dot yet.
+  const selfOnline = useSelfOnline();
+  const status = selfOnline === null ? undefined : selfOnline ? "online" : "offline";
+  const statusLabel = selfOnline === null ? "" : selfOnline ? "Online" : "Offline";
 
   const items = () => [...(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
 
@@ -74,7 +80,7 @@ export function PsProfileMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        aria-label={`Account menu for ${displayName}, ${role}`}
+        aria-label={`Account menu for ${displayName}, ${role}${statusLabel ? `, ${statusLabel}` : ""}`}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown") {
@@ -84,7 +90,7 @@ export function PsProfileMenu({
         }}
         className="flex items-center gap-2 rounded-full border border-white/10 bg-gray-900 py-1 pl-1 pr-2.5 transition hover:border-white/20 hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-brand-400 aria-expanded:border-brand-400/50"
       >
-        <PsAvatar name={displayName} src={avatarUrl} />
+        <PsAvatar name={displayName} src={avatarUrl} status={status} />
         {/* Phones show only the photo; the menu shows the name and role. */}
         <span className="hidden min-w-0 max-w-40 text-left leading-tight sm:block">
           <span data-topbar-name className="block truncate text-sm font-medium text-gray-200">
@@ -109,11 +115,17 @@ export function PsProfileMenu({
           className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-white/10 bg-gray-900 p-1.5 shadow-2xl shadow-black/50"
         >
           <div className="mb-1 flex items-center gap-3 border-b border-white/10 px-3 pb-3 pt-2">
-            <PsAvatar name={displayName} src={avatarUrl} size="md" />
+            <PsAvatar name={displayName} src={avatarUrl} size="md" status={status} />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-gray-100">{fullName}</p>
               <p className="truncate text-xs text-gray-400">{email}</p>
               <p className="mt-1 truncate text-[11px] font-medium text-brand-300">{role}</p>
+              {statusLabel && (
+                <p data-self-status={status} className={`mt-1 flex items-center gap-1.5 text-[11px] ${selfOnline ? "text-success-300" : "text-gray-400"}`}>
+                  <span aria-hidden className={`size-1.5 rounded-full ${selfOnline ? "bg-success-400" : "bg-gray-500"}`} />
+                  {selfOnline ? "Online" : "Offline · reconnecting…"}
+                </p>
+              )}
             </div>
           </div>
           <Link role="menuitem" href={PROFILE_PATH} className={itemClass} onClick={() => setOpen(false)}>

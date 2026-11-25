@@ -19,7 +19,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         <h2 id="recent-activity" className="text-lg font-semibold">
           Recent activity
         </h2>
-        <PsActivityList items={items} page={page} href="/" empty="Nothing yet. What you do on PugStreamX shows up here." />
+        <PsActivityList items={items} page={page} href="/" empty="Nothing yet. What you do on GoldHorizon shows up here." />
       </section>
     </div>
   );
